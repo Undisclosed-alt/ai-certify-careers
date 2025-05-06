@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -273,7 +272,7 @@ const ExamPage = () => {
             </CardHeader>
             <CardContent>
               {!allAnswered && (
-                <Alert variant="warning" className="mb-4">
+                <Alert variant="destructive" className="mb-4">
                   <AlertTitle>Warning</AlertTitle>
                   <AlertDescription>
                     You haven't answered all questions yet. 
