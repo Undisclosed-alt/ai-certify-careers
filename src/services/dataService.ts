@@ -200,7 +200,7 @@ export const getUserExamAttempts = async (userId: string): Promise<ExamAttempt[]
 };
 
 // Start an exam attempt
-export const startExamAttempt = async (examId: string, userId: string): Promise<ExamAttempt> => {
+export const startExamAttempt = async (userId: string, examId: string): Promise<ExamAttempt> => {
   try {
     const { data: exam, error: examError } = await supabase
       .from('exams')
@@ -554,9 +554,4 @@ export const evaluateExam = async (attemptId: string): Promise<ExamResult> => {
 export const getExamResults = (userId: string): Promise<ExamResult[]> => {
   const results = examResults.filter(result => result.userId === userId);
   return Promise.resolve(results);
-};
-
-export const getExamResultById = (id: string): Promise<ExamResult | undefined> => {
-  const result = examResults.find(result => result.id === id);
-  return Promise.resolve(result);
 };

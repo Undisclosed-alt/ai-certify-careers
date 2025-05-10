@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -83,7 +82,8 @@ const ExamStartPage = () => {
     setIsGeneratingExam(true);
     
     try {
-      const examAttempt = await startExamAttempt(user.id, exam.id, exam.jobRoleId);
+      // Fixed: Updated argument order to match the function definition (userId, examId)
+      const examAttempt = await startExamAttempt(user.id, exam.id);
       navigate(`/exam/${examAttempt.id}`, { state: { exam, attemptId: examAttempt.id } });
     } catch (error) {
       console.error('Failed to start exam:', error);
