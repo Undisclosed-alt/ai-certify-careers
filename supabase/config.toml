@@ -1,1 +1,23 @@
+
 project_id = "uxfcxllnzkdqqloevknd"
+
+[functions.stripe-checkout]
+verify_jwt = true
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.stripe-verify]
+verify_jwt = true
+
+[functions.exam-generate]
+verify_jwt = true
+
+[functions.exam-grade]
+verify_jwt = true
+
+[functions.certificate-generate]
+verify_jwt = true
+
+[functions.certificate-verify]
+verify_jwt = false

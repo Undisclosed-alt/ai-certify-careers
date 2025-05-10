@@ -1,5 +1,5 @@
-
-import { JobRole, Exam, ExamResult, Question, ExamAttempt } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
+import { JobRole, Exam, Question, ExamAttempt, ExamResult, mapJobRoleFromDb, mapExamFromDb, mapQuestionFromDb, mapExamAttemptFromDb, mapExamResultFromDb } from '@/types';
 
 // Mock data for job roles
 const jobRoles: JobRole[] = [
@@ -41,13 +41,260 @@ const jobRoles: JobRole[] = [
 let examAttempts: ExamAttempt[] = [];
 let examResults: ExamResult[] = [];
 
-export const getJobRoles = (): Promise<JobRole[]> => {
-  return Promise.resolve(jobRoles);
+// Get all job roles
+export const getJobRoles = async (): Promise<JobRole[]> => {
+  try {
+    const { data: jobRoles, error } = await supabase
+      .from('job_roles')
+      .select('*');
+
+    if (error) {
+      console.error('Error fetching job roles:', error);
+      throw error;
+    }
+
+    return jobRoles.map(mapJobRoleFromDb);
+  } catch (error) {
+    console.error('Failed to fetch job roles:', error);
+    throw error;
+  }
 };
 
-export const getJobRoleById = (id: string): Promise<JobRole | undefined> => {
-  const role = jobRoles.find(role => role.id === id);
-  return Promise.resolve(role);
+// Get a specific job role by id
+export const getJobRoleById = async (id: string): Promise<JobRole | null> => {
+  try {
+    const { data: jobRole, error } = await supabase
+      .from('job_roles')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') { // Record not found
+        return null;
+      }
+      console.error('Error fetching job role:', error);
+      throw error;
+    }
+
+    return mapJobRoleFromDb(jobRole);
+  } catch (error) {
+    console.error('Failed to fetch job role:', error);
+    throw error;
+  }
+};
+
+// Get exam for a job role
+export const getExamForJobRole = async (jobRoleId: string): Promise<Exam | null> => {
+  try {
+    // Get the exam
+    const { data: exam, error: examError } = await supabase
+      .from('exams')
+      .select('*')
+      .eq('job_role_id', jobRoleId)
+      .single();
+
+    if (examError) {
+      if (examError.code === 'PGRST116') { // Record not found
+        return null;
+      }
+      console.error('Error fetching exam:', examError);
+      throw examError;
+    }
+
+    // Get the questions for this exam
+    const { data: questions, error: questionsError } = await supabase
+      .from('questions')
+      .select('*')
+      .eq('exam_id', exam.id);
+
+    if (questionsError) {
+      console.error('Error fetching questions:', questionsError);
+      throw questionsError;
+    }
+
+    const mappedQuestions = questions.map(mapQuestionFromDb);
+    return mapExamFromDb(exam, mappedQuestions);
+  } catch (error) {
+    console.error('Failed to fetch exam:', error);
+    throw error;
+  }
+};
+
+// Get exam attempt by id
+export const getExamAttemptById = async (attemptId: string): Promise<ExamAttempt | null> => {
+  try {
+    const { data: attempt, error } = await supabase
+      .from('attempts')
+      .select('*')
+      .eq('id', attemptId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') { // Record not found
+        return null;
+      }
+      console.error('Error fetching exam attempt:', error);
+      throw error;
+    }
+
+    return mapExamAttemptFromDb(attempt);
+  } catch (error) {
+    console.error('Failed to fetch exam attempt:', error);
+    throw error;
+  }
+};
+
+// Get exam result by attempt id
+export const getExamResultById = async (attemptId: string): Promise<ExamResult | null> => {
+  try {
+    const { data: attempt, error } = await supabase
+      .from('attempts')
+      .select('*, exams!inner(job_role_id)')
+      .eq('id', attemptId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching exam result:', error);
+      throw error;
+    }
+
+    if (!attempt) {
+      return null;
+    }
+
+    const result = mapExamResultFromDb(attempt);
+    // Set the jobRoleId from the joined exam data
+    result.jobRoleId = (attempt.exams as any).job_role_id;
+    
+    return result;
+  } catch (error) {
+    console.error('Failed to fetch exam result:', error);
+    throw error;
+  }
+};
+
+// Get user's exam attempts
+export const getUserExamAttempts = async (userId: string): Promise<ExamAttempt[]> => {
+  try {
+    const { data: attempts, error } = await supabase
+      .from('attempts')
+      .select('*, exams!inner(job_role_id)')
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error fetching user exam attempts:', error);
+      throw error;
+    }
+
+    return attempts.map(attempt => {
+      const mappedAttempt = mapExamAttemptFromDb(attempt);
+      // Set the jobRoleId from the joined exam data
+      mappedAttempt.jobRoleId = (attempt.exams as any).job_role_id;
+      return mappedAttempt;
+    });
+  } catch (error) {
+    console.error('Failed to fetch user exam attempts:', error);
+    throw error;
+  }
+};
+
+// Start an exam attempt
+export const startExamAttempt = async (examId: string, userId: string): Promise<ExamAttempt> => {
+  try {
+    const { data: exam, error: examError } = await supabase
+      .from('exams')
+      .select('job_role_id')
+      .eq('id', examId)
+      .single();
+
+    if (examError) {
+      console.error('Error fetching exam:', examError);
+      throw examError;
+    }
+
+    const { data: attempt, error } = await supabase
+      .from('attempts')
+      .insert({
+        user_id: userId,
+        exam_id: examId,
+        started_at: new Date().toISOString(),
+        status: 'pending'
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error starting exam attempt:', error);
+      throw error;
+    }
+
+    const mappedAttempt = mapExamAttemptFromDb(attempt);
+    mappedAttempt.jobRoleId = exam.job_role_id;
+    
+    return mappedAttempt;
+  } catch (error) {
+    console.error('Failed to start exam attempt:', error);
+    throw error;
+  }
+};
+
+// Submit exam answers
+export const submitExamAnswers = async (
+  attemptId: string, 
+  answers: Record<string, string | number>
+): Promise<ExamResult> => {
+  try {
+    // Call our edge function to grade the answers
+    const { data, error } = await supabase.functions.invoke('exam-grade', {
+      body: { attemptId, answers }
+    });
+
+    if (error) {
+      console.error('Error grading exam:', error);
+      throw error;
+    }
+
+    // Fetch the updated attempt with the results
+    const { data: attempt, error: fetchError } = await supabase
+      .from('attempts')
+      .select('*, exams!inner(job_role_id)')
+      .eq('id', attemptId)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching graded attempt:', fetchError);
+      throw fetchError;
+    }
+
+    const result = mapExamResultFromDb(attempt);
+    result.jobRoleId = (attempt.exams as any).job_role_id;
+    
+    return result;
+  } catch (error) {
+    console.error('Failed to submit exam answers:', error);
+    throw error;
+  }
+};
+
+// Get certificate by attempt id
+export const getCertificateByAttemptId = async (attemptId: string): Promise<string | null> => {
+  try {
+    // Call our edge function to generate the certificate if it doesn't exist
+    const { data, error } = await supabase.functions.invoke('certificate-generate', {
+      body: { attemptId }
+    });
+
+    if (error) {
+      console.error('Error generating certificate:', error);
+      throw error;
+    }
+
+    return data.pdfUrl;
+  } catch (error) {
+    console.error('Failed to get certificate:', error);
+    throw error;
+  }
 };
 
 // Dynamically generate exam questions for a job role
@@ -211,21 +458,6 @@ export const generateExamForJobRole = async (jobRoleId: string): Promise<Exam> =
     questions,
     passingScore: 70  // 70% to pass
   };
-};
-
-export const startExamAttempt = (userId: string, examId: string, jobRoleId: string): Promise<ExamAttempt> => {
-  const attempt: ExamAttempt = {
-    id: `attempt-${Date.now()}`,
-    userId,
-    examId,
-    jobRoleId,
-    startedAt: new Date().toISOString(),
-    completedAt: null,
-    answers: {}
-  };
-  
-  examAttempts = [...examAttempts, attempt];
-  return Promise.resolve(attempt);
 };
 
 export const saveExamAnswer = (
