@@ -6,6 +6,7 @@ import { OpenAI } from "https://esm.sh/openai@4.16.1";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST,OPTIONS',
 };
 
 serve(async (req: Request) => {
@@ -142,7 +143,13 @@ serve(async (req: Request) => {
 
     // Calculate final percentage score
     const percentageScore = Math.round((score / totalPoints) * 100);
-    const passed = percentageScore >= attempt.exams.passing_score;
+    
+    // Fix: exams is an array; guard for undefined
+    const passing = attempt.exams?.[0]?.passing_score !== undefined
+      ? attempt.exams[0].passing_score
+      : 70;
+      
+    const passed = percentageScore >= passing;
 
     // Determine ranking
     let rank = null;
@@ -160,7 +167,7 @@ serve(async (req: Request) => {
     const feedbackPrompt = `Based on the exam results below, provide a brief encouraging feedback summary for the candidate:
     
     Score: ${percentageScore}%
-    Passing Score: ${attempt.exams.passing_score}%
+    Passing Score: ${passing}%
     Result: ${passed ? 'PASSED' : 'FAILED'}
     
     Detailed feedback:
