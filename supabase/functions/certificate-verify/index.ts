@@ -1,6 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { supabase } from "../_shared/config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -26,11 +26,6 @@ serve(async (req: Request) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    
-    // Create a Supabase client with service role key
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Look up the certificate by hash
     const { data: certificate, error: certError } = await supabase

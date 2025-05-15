@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { Stripe } from "https://esm.sh/stripe@12.2.0";
+import { supabase } from "../_shared/config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import * as crypto from "https://deno.land/std@0.170.0/crypto/mod.ts";
+import { supabase } from "../_shared/config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -111,11 +111,6 @@ serve(async (req: Request) => {
   try {
     const { attemptId } = await req.json();
     
-    // Create a Supabase client with service role key
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
     // Check if a certificate already exists
     const { data: existingCert, error: certError } = await supabase
       .from('certificates')
