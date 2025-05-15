@@ -108,7 +108,7 @@ serve(async (req: Request) => {
             await supabase.from('payments').insert({
               user_id: session.client_reference_id,
               stripe_payment_intent_id: paymentIntent.id,
-              amount: paymentIntent.amount,
+              amount: paymentIntent.amount / 100, // Convert from cents to decimal
               status: paymentIntent.status,
               created_at: new Date(paymentIntent.created * 1000).toISOString()
             });
@@ -138,8 +138,8 @@ serve(async (req: Request) => {
                 stripe_customer_id: customer.id,
                 status: subscription.status,
                 current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-                plan_id: subscription.items.data[0].price.id,
-                updated_at: new Date().toISOString()
+                plan_id: subscription.items.data[0].price.id
+                // updated_at is handled by the database trigger now
               }, {
                 onConflict: 'stripe_subscription_id'
               });
@@ -152,7 +152,7 @@ serve(async (req: Request) => {
               await supabase.from('payments').insert({
                 user_id: userId,
                 stripe_payment_intent_id: invoice.payment_intent as string,
-                amount: invoice.amount_paid,
+                amount: invoice.amount_paid / 100, // Convert from cents to decimal
                 status: 'succeeded',
                 created_at: new Date(invoice.created * 1000).toISOString()
               }).onConflict('stripe_payment_intent_id').ignore();
@@ -179,8 +179,8 @@ serve(async (req: Request) => {
               stripe_customer_id: customer.id,
               status: 'incomplete',
               current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-              plan_id: subscription.items.data[0].price.id,
-              updated_at: new Date().toISOString()
+              plan_id: subscription.items.data[0].price.id
+              // updated_at is handled by the database trigger now
             }, {
               onConflict: 'stripe_subscription_id'
             });
@@ -190,7 +190,7 @@ serve(async (req: Request) => {
               await supabase.from('payments').insert({
                 user_id: customer.metadata.user_id,
                 stripe_payment_intent_id: invoice.payment_intent as string,
-                amount: invoice.amount_due,
+                amount: invoice.amount_due / 100, // Convert from cents to decimal
                 status: 'failed',
                 created_at: new Date(invoice.created * 1000).toISOString()
               }).onConflict('stripe_payment_intent_id').ignore();
@@ -216,8 +216,8 @@ serve(async (req: Request) => {
             stripe_customer_id: customer.id,
             status: subscription.status,
             current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-            plan_id: subscription.items.data[0].price.id,
-            updated_at: new Date().toISOString()
+            plan_id: subscription.items.data[0].price.id
+            // updated_at is handled by the database trigger now
           }, {
             onConflict: 'stripe_subscription_id'
           });
@@ -239,8 +239,8 @@ serve(async (req: Request) => {
             stripe_customer_id: customer.id,
             status: 'canceled',
             current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-            plan_id: subscription.items.data[0].price.id,
-            updated_at: new Date().toISOString()
+            plan_id: subscription.items.data[0].price.id
+            // updated_at is handled by the database trigger now
           }, {
             onConflict: 'stripe_subscription_id'
           });
@@ -259,7 +259,7 @@ serve(async (req: Request) => {
           await supabase.from('payments').insert({
             user_id: paymentIntent.metadata.user_id,
             stripe_payment_intent_id: paymentIntent.id,
-            amount: paymentIntent.amount,
+            amount: paymentIntent.amount / 100, // Convert from cents to decimal
             status: paymentIntent.status,
             created_at: new Date(paymentIntent.created * 1000).toISOString()
           }).onConflict('stripe_payment_intent_id').ignore();
