@@ -21,3 +21,6 @@ verify_jwt = true
 
 [functions.certificate-verify]
 verify_jwt = false
+
+[functions.get-exam-results]
+verify_jwt = true
