@@ -2,6 +2,8 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { OpenAI } from "https://esm.sh/openai@4.16.1";
 import { supabase } from "../_shared/config.ts";
+import { getOrCreateExamForJobRole, getExistingQuestions } from "../_shared/exams.ts";
+import { logPrompt, logError } from "../_shared/logger.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,25 +20,11 @@ serve(async (req: Request) => {
   try {
     const { jobRoleId, userId } = await req.json();
     
-    // Verify that the user has a paid attempt for this job role
-    const { data: exam, error: examError } = await supabase
-      .from('exams')
-      .select('*')
-      .eq('job_role_id', jobRoleId)
-      .single();
+    // Get or create an exam for this job role using our shared service
+    const exam = await getOrCreateExamForJobRole(jobRoleId);
 
-    if (examError || !exam) {
-      return new Response(
-        JSON.stringify({ error: 'Exam not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Get existing questions for this exam
-    const { data: existingQuestions, error: questionsError } = await supabase
-      .from('questions')
-      .select('*')
-      .eq('exam_id', exam.id);
+    // Get existing questions for this exam using our shared service
+    const existingQuestions = await getExistingQuestions(exam.id);
 
     if (existingQuestions && existingQuestions.length > 0) {
       // Return existing questions
@@ -50,8 +38,13 @@ serve(async (req: Request) => {
     }
 
     // If no existing questions, generate new ones using OpenAI
+    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
+    if (!openaiApiKey) {
+      throw new Error("OPENAI_API_KEY is not configured");
+    }
+    
     const openai = new OpenAI({
-      apiKey: Deno.env.get("OPENAI_API_KEY") || "",
+      apiKey: openaiApiKey,
     });
 
     // Get job role details
@@ -132,15 +125,13 @@ serve(async (req: Request) => {
       );
     }
 
-    // Log the prompt and response
-    await supabase
-      .from('prompt_logs')
-      .insert({
-        type: 'exam_generation',
-        prompt,
-        response: { questions },
-        metadata: { exam_id: exam.id, job_role_id: jobRoleId }
-      });
+    // Log the prompt and response using our shared logger service
+    await logPrompt({
+      type: 'exam_generation',
+      prompt,
+      response: { questions },
+      metadata: { exam_id: exam.id, job_role_id: jobRoleId }
+    });
 
     return new Response(
       JSON.stringify({ questions: insertedQuestions }),
@@ -150,9 +141,11 @@ serve(async (req: Request) => {
       }
     );
   } catch (error) {
-    console.error('Error generating exam:', error);
+    // Use our shared error logger
+    const errorDetails = logError(error, 'exam-generate');
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorDetails.message }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

@@ -1,7 +1,8 @@
-
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { Stripe } from "https://esm.sh/stripe@12.2.0";
 import { supabase } from "../_shared/config.ts";
+import { verifyStripeSignature, getStripeClient } from "../_shared/stripe.ts";
+import { recordPayment, upsertSubscriptionFromStripe } from "../_shared/payments.ts";
+import { logError } from "../_shared/logger.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,36 +17,9 @@ serve(async (req: Request) => {
   }
 
   try {
-    // Get the stripe signature from the headers
-    const signature = req.headers.get('stripe-signature');
-
-    if (!signature) {
-      return new Response(
-        JSON.stringify({ error: 'No signature provided' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const body = await req.text();
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-      apiVersion: '2023-10-16',
-    });
-    
-    // Verify the webhook signature
-    let event;
-    try {
-      event = stripe.webhooks.constructEvent(
-        body,
-        signature,
-        Deno.env.get("STRIPE_WEBHOOK_SECRET") || ""
-      );
-    } catch (err) {
-      console.error(`⚠️ Webhook signature verification failed:`, err.message);
-      return new Response(
-        JSON.stringify({ error: `Webhook signature verification failed: ${err.message}` }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Use our shared service to verify the Stripe webhook signature
+    const event = await verifyStripeSignature(req);
+    const stripe = getStripeClient();
 
     console.log(`✅ Webhook received: ${event.type}`);
     
@@ -105,12 +79,12 @@ serve(async (req: Request) => {
           if (session.payment_intent) {
             const paymentIntent = await stripe.paymentIntents.retrieve(session.payment_intent as string);
             
-            await supabase.from('payments').insert({
-              user_id: session.client_reference_id,
-              stripe_payment_intent_id: paymentIntent.id,
+            // Use our shared service to record the payment
+            await recordPayment({
+              userId: session.client_reference_id,
+              stripePaymentIntentId: paymentIntent.id,
               amount: paymentIntent.amount / 100, // Convert from cents to decimal
-              status: paymentIntent.status,
-              created_at: new Date(paymentIntent.created * 1000).toISOString()
+              status: paymentIntent.status
             });
           }
         }
@@ -131,31 +105,16 @@ serve(async (req: Request) => {
             const userId = customer.metadata.user_id;
             
             if (userId) {
-              // Update subscription record
-              const { error } = await supabase.from('subscriptions').upsert({
-                user_id: userId,
-                stripe_subscription_id: subscription.id,
-                stripe_customer_id: customer.id,
-                status: subscription.status,
-                current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-                plan_id: subscription.items.data[0].price.id
-                // updated_at is handled by the database trigger now
-              }, {
-                onConflict: 'stripe_subscription_id'
-              });
-              
-              if (error) {
-                console.error('Error updating subscription:', error);
-              }
+              // Use our shared service to update subscription record
+              await upsertSubscriptionFromStripe(subscription);
               
               // Store payment information
-              await supabase.from('payments').insert({
-                user_id: userId,
-                stripe_payment_intent_id: invoice.payment_intent as string,
+              await recordPayment({
+                userId: userId,
+                stripePaymentIntentId: invoice.payment_intent as string,
                 amount: invoice.amount_paid / 100, // Convert from cents to decimal
-                status: 'succeeded',
-                created_at: new Date(invoice.created * 1000).toISOString()
-              }).onConflict('stripe_payment_intent_id').ignore();
+                status: 'succeeded'
+              });
             }
           }
         }
@@ -296,9 +255,11 @@ serve(async (req: Request) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('❌ Error processing webhook:', error);
+    // Use our shared error logger
+    const errorDetails = logError(error, 'stripe-webhook');
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorDetails.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
