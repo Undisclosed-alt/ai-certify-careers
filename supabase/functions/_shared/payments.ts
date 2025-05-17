@@ -1,6 +1,8 @@
 
 import { Stripe } from "https://esm.sh/stripe@12.2.0";
 import { supabase } from "./config.ts";
+import { PaymentType } from "./types.ts";
+import { logError, logInfo } from "./logger.ts";
 
 /**
  * 💰 Payment Service
@@ -22,7 +24,14 @@ export async function recordPayment({
   stripePaymentIntentId: string;
   amount: number;
   status: string;
-}) {
+}): Promise<PaymentType | null> {
+  logInfo("Recording payment", { 
+    userId, 
+    stripePaymentIntentId, 
+    amount, 
+    status 
+  });
+
   const { data, error } = await supabase
     .from("payments")
     .insert({
@@ -36,11 +45,11 @@ export async function recordPayment({
     .ignore();
 
   if (error) {
-    console.error("Error recording payment:", error);
+    logError("Failed to record payment", error, { stripePaymentIntentId });
     throw new Error(`Failed to record payment: ${error.message}`);
   }
 
-  return data;
+  return data as PaymentType | null;
 }
 
 /**
@@ -80,6 +89,12 @@ export async function upsertSubscriptionFromStripe(subscription: any) {
     throw new Error("User ID not found in customer metadata");
   }
 
+  logInfo("Upserting subscription from Stripe", { 
+    subscriptionId: subscription.id, 
+    userId, 
+    status: subscription.status 
+  });
+
   const { data, error } = await supabase
     .from("subscriptions")
     .upsert({
@@ -94,7 +109,7 @@ export async function upsertSubscriptionFromStripe(subscription: any) {
     });
 
   if (error) {
-    console.error("Error upserting subscription:", error);
+    logError("Failed to upsert subscription", error, { subscriptionId: subscription.id });
     throw new Error(`Failed to upsert subscription: ${error.message}`);
   }
 

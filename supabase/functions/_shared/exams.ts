@@ -1,5 +1,7 @@
 
 import { supabase } from "./config.ts";
+import { ExamType, QuestionType } from "./types.ts";
+import { logError, logInfo } from "./logger.ts";
 
 /**
  * 📝 Exam Service
@@ -11,7 +13,9 @@ import { supabase } from "./config.ts";
  * @param {string} jobRoleId The job role ID
  * @returns {Promise} The exam object
  */
-export async function getOrCreateExamForJobRole(jobRoleId: string) {
+export async function getOrCreateExamForJobRole(jobRoleId: string): Promise<ExamType> {
+  logInfo("Getting or creating exam for job role", { jobRoleId });
+  
   // First try to get an existing exam
   const { data: existingExam, error: examError } = await supabase
     .from("exams")
@@ -21,12 +25,12 @@ export async function getOrCreateExamForJobRole(jobRoleId: string) {
 
   // If the exam already exists, return it
   if (existingExam) {
-    return existingExam;
+    return existingExam as ExamType;
   }
 
   // If there's a real error (not just 'no rows returned')
   if (examError && !examError.message.includes("no rows returned")) {
-    console.error("Error fetching exam:", examError);
+    logError("Failed to fetch exam", examError, { jobRoleId });
     throw new Error(`Failed to fetch exam: ${examError.message}`);
   }
 
@@ -43,11 +47,11 @@ export async function getOrCreateExamForJobRole(jobRoleId: string) {
     .single();
 
   if (createError) {
-    console.error("Error creating exam:", createError);
+    logError("Failed to create exam", createError, { jobRoleId });
     throw new Error(`Failed to create exam: ${createError.message}`);
   }
 
-  return newExam;
+  return newExam as ExamType;
 }
 
 /**
@@ -55,16 +59,18 @@ export async function getOrCreateExamForJobRole(jobRoleId: string) {
  * @param {string} examId The exam ID
  * @returns {Promise} Array of questions
  */
-export async function getExistingQuestions(examId: string) {
+export async function getExistingQuestions(examId: string): Promise<QuestionType[]> {
+  logInfo("Getting existing questions", { examId });
+  
   const { data: questions, error } = await supabase
     .from("questions")
     .select("*")
     .eq("exam_id", examId);
 
   if (error) {
-    console.error("Error fetching questions:", error);
+    logError("Failed to fetch questions", error, { examId });
     throw new Error(`Failed to fetch questions: ${error.message}`);
   }
 
-  return questions || [];
+  return questions as QuestionType[] || [];
 }

@@ -1,5 +1,6 @@
 
 import { Stripe } from "https://esm.sh/stripe@12.2.0";
+import { logError, logInfo, logStripeEvent } from "./logger.ts";
 
 /**
  * 💳 Stripe Service
@@ -15,12 +16,16 @@ export function verifyStripeSignature(req: Request): Stripe.Event {
   const signature = req.headers.get("stripe-signature");
   
   if (!signature) {
-    throw new Error("No Stripe signature found in request headers");
+    const error = new Error("No Stripe signature found in request headers");
+    logError("Webhook signature verification failed", error);
+    throw error;
   }
   
   const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
   if (!webhookSecret) {
-    throw new Error("STRIPE_WEBHOOK_SECRET is not configured");
+    const error = new Error("STRIPE_WEBHOOK_SECRET is not configured");
+    logError("Webhook configuration error", error);
+    throw error;
   }
   
   const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
@@ -31,23 +36,35 @@ export function verifyStripeSignature(req: Request): Stripe.Event {
     // We need to get the raw body as text for signature verification
     const bodyText = req.clone().text();
     // Verify the webhook signature
-    return stripe.webhooks.constructEventAsync(
-      await bodyText,
+    const event = stripe.webhooks.constructEventAsync(
+      bodyText,
       signature,
       webhookSecret
     );
+    
+    // Log the event
+    logInfo("Verified Stripe webhook signature", { eventType: event.type });
+    
+    return event;
   } catch (err) {
-    console.error("⚠️ Stripe webhook signature verification failed:", err);
+    logError("Stripe webhook signature verification failed", err);
     throw new Error(`Webhook signature verification failed: ${err.message}`);
   }
 }
 
-// Export the Stripe client for direct use when needed
-export function getStripeClient() {
+/**
+ * Get a configured Stripe client instance
+ * @returns {Stripe} The Stripe client
+ */
+export function getStripeClient(): Stripe {
   const secretKey = Deno.env.get("STRIPE_SECRET_KEY");
   if (!secretKey) {
-    throw new Error("STRIPE_SECRET_KEY is not configured");
+    const error = new Error("STRIPE_SECRET_KEY is not configured");
+    logError("Stripe client configuration error", error);
+    throw error;
   }
+  
+  logInfo("Created Stripe client");
   
   return new Stripe(secretKey, {
     apiVersion: "2023-10-16",
