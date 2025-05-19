@@ -212,7 +212,7 @@ const CertificatePage = () => {
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Recipient</p>
-                <p className="font-medium">{user.name}</p>
+                <p className="font-medium">{userName}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Score</p>
