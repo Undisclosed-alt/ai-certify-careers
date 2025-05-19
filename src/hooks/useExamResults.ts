@@ -18,9 +18,10 @@ export function useExamResults() {
   return useQuery({
     queryKey: ['examResults'],
     queryFn: async () => {
-      return callEdge<ExamResultsResponse>("get-exam-results", {
+      const response = await callEdge<ExamResultsResponse>("get-exam-results", {
         method: "POST"
       });
+      return response.results;
     }
   });
 }
@@ -35,10 +36,11 @@ export function useExamResult(resultId: string | undefined) {
       if (!resultId) {
         throw new Error("Result ID is required");
       }
-      return callEdge<ExamResultResponse>("get-exam-results", {
+      const response = await callEdge<ExamResultResponse>("get-exam-results", {
         method: "POST",
         body: { exam_id: resultId }
       });
+      return response.result;
     },
     enabled: !!resultId,
   });

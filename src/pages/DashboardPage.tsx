@@ -81,7 +81,7 @@ const DashboardPage = () => {
                       Completed on {new Date(result.completedAt).toLocaleDateString()}
                     </CardDescription>
                   </div>
-                  <Badge variant={result.passed ? "success" : "destructive"}>
+                  <Badge variant={result.passed ? "secondary" : "destructive"}>
                     {result.passed ? "Passed" : "Failed"}
                   </Badge>
                 </div>
