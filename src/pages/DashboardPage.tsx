@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,10 +9,6 @@ import { JobRole } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { useExamResults } from '@/hooks/useExamResults';
 import { useSubscription } from '@/hooks/useSubscription';
-
-interface ResultWithJobRole {
-  jobRole?: JobRole;
-}
 
 const DashboardPage = () => {
   const { user } = useAuth();
@@ -34,12 +31,15 @@ const DashboardPage = () => {
     });
   }
   
+  // Get user's name from user metadata or email
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+  
   return (
     <div className="container max-w-5xl mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back, {user?.user_metadata?.full_name || user?.email}!</p>
+          <p className="text-muted-foreground">Welcome back, {userName}!</p>
         </div>
         <Link to="/jobs">
           <Button>Take New Certification</Button>
@@ -69,7 +69,7 @@ const DashboardPage = () => {
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div>
-                        <CardTitle>{result.jobRole?.title} Certification</CardTitle>
+                        <CardTitle>{result.jobRoleId} Certification</CardTitle>
                         <CardDescription>
                           Completed on {new Date(result.completedAt).toLocaleDateString()}
                         </CardDescription>

@@ -115,7 +115,9 @@ const ExamStartPage = () => {
   };
   
   if (!user) {
-    return <Navigate to="/login" />;
+    // Use navigate instead of Navigate component
+    navigate('/login');
+    return null;
   }
   
   if (isLoading) {

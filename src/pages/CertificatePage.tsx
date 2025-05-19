@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -16,6 +15,9 @@ const CertificatePage = () => {
   const [jobRole, setJobRole] = useState<JobRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  
+  // Get user's name from user metadata or email
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
   
   useEffect(() => {
     const fetchCertificateDetails = async () => {
@@ -143,7 +145,7 @@ const CertificatePage = () => {
           {/* Certificate body */}
           <div className="text-center mb-8">
             <p className="text-lg text-gray-600 mb-6">This certifies that</p>
-            <p className="text-3xl font-bold text-gray-800 mb-6">{user.name}</p>
+            <p className="text-3xl font-bold text-gray-800 mb-6">{userName}</p>
             <p className="text-lg text-gray-600 mb-6">has successfully completed the</p>
             <p className="text-2xl font-bold text-gray-800 mb-2">{jobRole.title}</p>
             <p className="text-xl text-gray-700 mb-6">Certification Exam</p>

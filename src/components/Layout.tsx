@@ -9,6 +9,10 @@ const Navigation: React.FC = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
   
+  // Get user's name from user metadata or email
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+  const userInitial = userName.charAt(0).toUpperCase();
+  
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
       <div className="container flex h-16 items-center justify-between">
@@ -48,10 +52,10 @@ const Navigation: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-primary/10 text-primary">
-                      {user.name.charAt(0).toUpperCase()}
+                      {userInitial}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-sm font-medium">{user.name}</span>
+                  <span className="text-sm font-medium">{userName}</span>
                 </div>
               </div>
               <Button variant="ghost" onClick={logout}>Sign Out</Button>
