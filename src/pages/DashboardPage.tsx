@@ -1,72 +1,52 @@
-
-import React, { useEffect, useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
-import { ExamResult, JobRole } from '@/types';
-import { getExamResults, getJobRoleById } from '@/services/dataService';
+import { JobRole } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { useExamResults } from '@/hooks/useExamResults';
+import { useSubscription } from '@/hooks/useSubscription';
 
-interface ResultWithJobRole extends ExamResult {
+interface ResultWithJobRole {
   jobRole?: JobRole;
 }
 
 const DashboardPage = () => {
   const { user } = useAuth();
-  const [results, setResults] = useState<ResultWithJobRole[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-
-  useEffect(() => {
-    const fetchExamResults = async () => {
-      if (!user) return;
-      
-      try {
-        const userResults = await getExamResults(user.id);
-        
-        // Get job role details for each result
-        const resultsWithJobRole = await Promise.all(
-          userResults.map(async (result) => {
-            const jobRole = await getJobRoleById(result.jobRoleId);
-            return { ...result, jobRole };
-          })
-        );
-        
-        setResults(resultsWithJobRole);
-      } catch (error) {
-        console.error('Failed to fetch exam results:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load your exam results.",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchExamResults();
-  }, [user, toast]);
-
-  if (!user) {
-    return <Navigate to="/login" />;
+  const [activeTab, setActiveTab] = useState("certifications");
+  
+  // Use our custom hooks
+  const examResultsQuery = useExamResults();
+  const subscriptionQuery = useSubscription();
+  
+  const isLoading = examResultsQuery.isLoading || subscriptionQuery.isLoading;
+  const results = examResultsQuery.data?.results || [];
+  const subscription = subscriptionQuery.data?.subscription;
+  
+  if (examResultsQuery.error) {
+    toast({
+      title: "Error",
+      description: "Failed to load your exam results.",
+      variant: "destructive"
+    });
   }
-
+  
   return (
     <div className="container max-w-5xl mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back, {user.name}!</p>
+          <p className="text-muted-foreground">Welcome back, {user?.user_metadata?.full_name || user?.email}!</p>
         </div>
         <Link to="/jobs">
           <Button>Take New Certification</Button>
         </Link>
       </div>
 
-      <Tabs defaultValue="certifications">
+      <Tabs defaultValue="certifications" value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid grid-cols-2 w-full max-w-md">
           <TabsTrigger value="certifications">Certifications</TabsTrigger>
           <TabsTrigger value="settings">Account Settings</TabsTrigger>
@@ -167,18 +147,23 @@ const DashboardPage = () => {
             <CardContent className="space-y-4">
               <div>
                 <h3 className="text-sm font-medium mb-1">Name</h3>
-                <p className="p-2 border rounded bg-muted/50">{user.name}</p>
+                <p className="p-2 border rounded bg-muted/50">{user?.user_metadata?.full_name || 'Not provided'}</p>
               </div>
               <div>
                 <h3 className="text-sm font-medium mb-1">Email</h3>
-                <p className="p-2 border rounded bg-muted/50">{user.email}</p>
+                <p className="p-2 border rounded bg-muted/50">{user?.email}</p>
               </div>
-              <div>
-                <h3 className="text-sm font-medium mb-1">Account Created</h3>
-                <p className="p-2 border rounded bg-muted/50">
-                  {new Date().toLocaleDateString()}
-                </p>
-              </div>
+              {subscription && (
+                <div>
+                  <h3 className="text-sm font-medium mb-1">Subscription</h3>
+                  <p className="p-2 border rounded bg-muted/50">
+                    {subscription.status === 'active' ? 'Active' : 'Inactive'} - 
+                    {subscription.current_period_end ? 
+                      ` Renews on ${new Date(subscription.current_period_end).toLocaleDateString()}` : 
+                      ''}
+                  </p>
+                </div>
+              )}
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
               <Button className="w-full" disabled>Change Password</Button>

@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Layout from "@/components/Layout";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 // Pages
 import HomePage from "@/pages/HomePage";
@@ -23,15 +24,22 @@ import TermsPage from "@/pages/TermsPage";
 import PrivacyPage from "@/pages/PrivacyPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000, // 1 minute
+      retry: 1,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
+    <BrowserRouter>
       <AuthProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
           <Layout>
             <Routes>
               <Route path="/" element={<HomePage />} />
@@ -39,20 +47,40 @@ const App = () => (
               <Route path="/jobs/:id" element={<JobDetailPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/exam/start" element={<ExamStartPage />} />
-              <Route path="/exam/:id" element={<ExamPage />} />
-              <Route path="/results/:id" element={<ResultsPage />} />
-              <Route path="/certificate/:id" element={<CertificatePage />} />
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <DashboardPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/exam/start" element={
+                <ProtectedRoute>
+                  <ExamStartPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/exam/:id" element={
+                <ProtectedRoute>
+                  <ExamPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/results/:id" element={
+                <ProtectedRoute>
+                  <ResultsPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/certificate/:id" element={
+                <ProtectedRoute>
+                  <CertificatePage />
+                </ProtectedRoute>
+              } />
               <Route path="/about" element={<AboutPage />} />
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Layout>
-        </BrowserRouter>
+        </TooltipProvider>
       </AuthProvider>
-    </TooltipProvider>
+    </BrowserRouter>
   </QueryClientProvider>
 );
 

@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { JobRole, Exam } from '@/types';
 import { getJobRoleById, generateExamForJobRole, startExamAttempt } from '@/services/dataService';
-import { verifyPayment } from '@/services/paymentService';
-import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const ExamStartPage = () => {
   const { user } = useAuth();
@@ -37,7 +36,8 @@ const ExamStartPage = () => {
       
       try {
         // Verify payment
-        const isPaymentValid = await verifyPayment(sessionId);
+        // This will be replaced by our hooks in the future
+        const isPaymentValid = await verifyPaymentViaApi(sessionId);
         setIsVerifyingPayment(false);
         
         if (!isPaymentValid) {
@@ -65,7 +65,7 @@ const ExamStartPage = () => {
           title: "Exam Ready",
           description: "Your certification exam has been generated.",
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to prepare exam:', error);
         setError('Failed to prepare the exam. Please try again.');
         setIsLoading(false);
@@ -76,13 +76,31 @@ const ExamStartPage = () => {
     verifyAndLoadExam();
   }, [roleId, sessionId, user, toast]);
   
+  // Simple method to verify payment - will be replaced by API call
+  const verifyPaymentViaApi = async (sessionId: string) => {
+    // This is a placeholder for the future API call
+    // Currently using the existing function to maintain functionality
+    try {
+      const result = await fetch('/api/stripe-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      }).then(res => res.json());
+      
+      return result.success;
+    } catch (error) {
+      console.error('Error verifying payment:', error);
+      return false;
+    }
+  };
+  
   const handleStartExam = async () => {
     if (!user || !exam) return;
     
     setIsGeneratingExam(true);
     
     try {
-      // Fixed: Updated argument order to match the function definition (userId, examId)
+      // This will be replaced by our hooks in the future
       const examAttempt = await startExamAttempt(user.id, exam.id);
       navigate(`/exam/${examAttempt.id}`, { state: { exam, attemptId: examAttempt.id } });
     } catch (error) {

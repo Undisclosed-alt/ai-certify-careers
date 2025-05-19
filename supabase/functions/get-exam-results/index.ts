@@ -1,13 +1,11 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { supabase } from "../_shared/config.ts";
+import { logError, logInfo } from "../_shared/logger.ts";
 
-// Set up CORS headers for browser clients
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 serve(async (req) => {
@@ -17,85 +15,129 @@ serve(async (req) => {
   }
 
   try {
-    // Get the JWT from the request
+    // Get JWT from request
     const authHeader = req.headers.get('Authorization');
-    
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      throw new Error('Missing Authorization header');
     }
-    
-    // Get the authenticated user from the JWT
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+
+    // Get session data using Supabase Auth
+    const jwt = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabase.auth.getUser(jwt);
     
     if (userError || !user) {
-      console.error('Authentication error:', userError);
+      logError("Authentication failed", userError || new Error("User not found"), { 
+        path: "get-exam-results" 
+      });
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ error: "Authentication failed" }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    
-    // Parse the request body
+
+    // Get request parameters
     const requestData = await req.json().catch(() => ({}));
     const examId = requestData.exam_id;
-    
-    console.log(`Fetching exam results for user ${user.id}, exam_id: ${examId || 'all'}`);
-    
-    // Query the database for exam results
+    const userId = user.id;
+
+    logInfo("Processing exam results request", {
+      userId,
+      examId: examId || "all",
+    });
+
+    // Define the query based on whether an exam_id is provided
     let query = supabase
       .from('attempts')
       .select(`
-        id,
-        exam_id,
-        score_json,
+        id, 
+        created_at, 
+        completed_at, 
+        rank, 
         status,
-        started_at,
-        completed_at,
-        rank
+        score_json,
+        exam_id,
+        exams!inner(
+          id,
+          job_role_id,
+          passing_score,
+          time_limit_minutes
+        ),
+        job_roles:exams!inner(job_roles(
+          id,
+          title,
+          description,
+          level
+        ))
       `)
-      .eq('user_id', user.id);
-    
-    // If an exam_id was provided, filter by it
+      .eq('user_id', userId)
+      .eq('status', 'completed')
+      .order('created_at', { ascending: false });
+
+    // Filter by exam_id if provided
     if (examId) {
-      query = query.eq('exam_id', examId);
+      query = query.eq('id', examId);
     }
-    
-    const { data: attempts, error } = await query;
-    
+
+    // Execute the query
+    const { data: results, error } = await query;
+
     if (error) {
-      console.error('Database query error:', error);
+      logError("Database query error", error, { 
+        path: "get-exam-results",
+        userId,
+        examId: examId || "all" 
+      });
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch exam results' }),
+        JSON.stringify({ error: "Failed to fetch exam results" }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    
-    // Transform the results into a more user-friendly format
-    const results = attempts.map(attempt => ({
-      id: attempt.id,
-      exam_id: attempt.exam_id,
-      score: (attempt.score_json as any)?.score || 0,
-      passed: attempt.status === 'passed',
-      started_at: attempt.started_at,
-      completed_at: attempt.completed_at,
-      ranking: attempt.rank,
-      feedback: (attempt.score_json as any)?.feedback || ''
-    }));
-    
-    // Return the results
+
+    // Format the results for the response
+    const formattedResults = results.map((result) => {
+      const scoreJson = result.score_json || {};
+      const exam = result.exams;
+      const jobRole = result.job_roles;
+      
+      return {
+        id: result.id,
+        examId: result.exam_id,
+        completedAt: result.completed_at,
+        createdAt: result.created_at,
+        ranking: result.rank,
+        passed: scoreJson.overall_score >= (exam?.passing_score || 70),
+        score: scoreJson.overall_score || 0,
+        feedback: scoreJson.feedback || "No feedback available",
+        jobRoleId: exam?.job_role_id,
+        jobRole: jobRole ? {
+          id: jobRole.id,
+          title: jobRole.title,
+          description: jobRole.description,
+          level: jobRole.level
+        } : null
+      };
+    });
+
+    // Respond based on whether we're getting one or many results
+    const responseBody = examId 
+      ? { result: formattedResults[0] || null } 
+      : { results: formattedResults };
+
+    logInfo("Successfully retrieved exam results", {
+      userId,
+      examId: examId || "all",
+      count: formattedResults.length
+    });
+
     return new Response(
-      JSON.stringify({ results }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify(responseBody),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
     
   } catch (error) {
-    console.error('Unexpected error:', error);
+    logError("Unexpected error", error as Error, { path: "get-exam-results" });
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: "An unexpected error occurred" }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
