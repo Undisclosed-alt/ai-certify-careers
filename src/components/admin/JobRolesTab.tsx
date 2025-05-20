@@ -21,6 +21,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import {
@@ -32,13 +33,14 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 // Define the schema for job roles
 const jobRoleSchema = z.object({
   title: z.string().min(1, "Title is required"),
   slug: z.string().min(1, "Slug is required").regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens"),
   description: z.string().min(1, "Description is required"),
-  price_cents: z.coerce.number().int().positive("Price must be a positive number"),
+  price_cents: z.coerce.number().int().min(0, "Price must be a non-negative number"),
   level: z.string().optional(),
   image_url: z.string().optional(),
 });
@@ -162,7 +164,14 @@ const JobRolesTab = () => {
         // Update existing job role
         const { error } = await supabase
           .from('job_roles')
-          .update(values)
+          .update({
+            title: values.title,
+            slug: values.slug,
+            description: values.description,
+            price_cents: values.price_cents,
+            level: values.level || null,
+            image_url: values.image_url || null
+          })
           .eq('id', currentJobRole.id);
 
         if (error) throw error;
@@ -184,7 +193,14 @@ const JobRolesTab = () => {
         // Create new job role
         const { data, error } = await supabase
           .from('job_roles')
-          .insert(values)
+          .insert({
+            title: values.title,
+            slug: values.slug,
+            description: values.description,
+            price_cents: values.price_cents,
+            level: values.level || null,
+            image_url: values.image_url || null
+          })
           .select();
 
         if (error) throw error;
@@ -229,7 +245,7 @@ const JobRolesTab = () => {
                 <TableHead>Title</TableHead>
                 <TableHead>Slug</TableHead>
                 <TableHead>Level</TableHead>
-                <TableHead>Price (¢)</TableHead>
+                <TableHead>Price</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -252,7 +268,13 @@ const JobRolesTab = () => {
                     <TableCell className="font-medium">{jobRole.title}</TableCell>
                     <TableCell>{jobRole.slug}</TableCell>
                     <TableCell>{jobRole.level || '-'}</TableCell>
-                    <TableCell>{jobRole.price_cents}</TableCell>
+                    <TableCell>
+                      {jobRole.price_cents === 0 ? (
+                        <Badge variant="secondary">Free</Badge>
+                      ) : (
+                        `${(jobRole.price_cents / 100).toFixed(2)} USD`
+                      )}
+                    </TableCell>
                     <TableCell className="text-right space-x-2">
                       <Button variant="outline" size="icon" onClick={() => handleEditJobRole(jobRole)}>
                         <PencilIcon className="h-4 w-4" />
@@ -335,8 +357,9 @@ const JobRolesTab = () => {
                     <FormItem>
                       <FormLabel>Price (cents)</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} />
+                        <Input type="number" min="0" {...field} />
                       </FormControl>
+                      <FormDescription>Enter 0 to make this role free.</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

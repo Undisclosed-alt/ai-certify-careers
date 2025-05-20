@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,8 @@ import { JobRole, Exam } from '@/types';
 import { getJobRoleById, generateExamForJobRole, startExamAttempt } from '@/services/dataService';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBuyExam } from '@/hooks/useBuyExam';
+import { supabase } from '@/integrations/supabase/client';
 
 const ExamStartPage = () => {
   const { user } = useAuth();
@@ -18,7 +21,9 @@ const ExamStartPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(true);
   const [isGeneratingExam, setIsGeneratingExam] = useState(false);
+  const [isFreeExam, setIsFreeExam] = useState(false);
   const { toast } = useToast();
+  const buyExamMutation = useBuyExam();
   
   // Get the job role ID and session ID from the URL
   const searchParams = new URLSearchParams(location.search);
@@ -27,7 +32,7 @@ const ExamStartPage = () => {
   
   useEffect(() => {
     const verifyAndLoadExam = async () => {
-      if (!roleId || !sessionId || !user) {
+      if (!roleId || !user) {
         setError('Missing required information');
         setIsLoading(false);
         setIsVerifyingPayment(false);
@@ -35,26 +40,37 @@ const ExamStartPage = () => {
       }
       
       try {
-        // Verify payment
-        // This will be replaced by our hooks in the future
-        const isPaymentValid = await verifyPaymentViaApi(sessionId);
-        setIsVerifyingPayment(false);
-        
-        if (!isPaymentValid) {
-          setError('Payment verification failed');
-          setIsLoading(false);
-          return;
-        }
-        
         // Load job role
-        const role = await getJobRoleById(roleId);
-        if (!role) {
+        const roleData = await getJobRoleById(roleId);
+        if (!roleData) {
           setError('Job role not found');
           setIsLoading(false);
           return;
         }
         
-        setJobRole(role);
+        setJobRole(roleData);
+        setIsFreeExam(roleData.price_cents === 0);
+        
+        // If this is coming from a payment session, verify payment
+        if (sessionId) {
+          // Verify payment
+          const isPaymentValid = await verifyPaymentViaApi(sessionId);
+          setIsVerifyingPayment(false);
+          
+          if (!isPaymentValid) {
+            setError('Payment verification failed');
+            setIsLoading(false);
+            return;
+          }
+        } else if (!isFreeExam) {
+          // No session ID and not a free exam, so they need to pay
+          setError('Payment required');
+          setIsLoading(false);
+          return;
+        } else {
+          // Free exam, no need to verify payment
+          setIsVerifyingPayment(false);
+        }
         
         // Generate exam
         const generatedExam = await generateExamForJobRole(roleId);
@@ -78,8 +94,6 @@ const ExamStartPage = () => {
   
   // Simple method to verify payment - will be replaced by API call
   const verifyPaymentViaApi = async (sessionId: string) => {
-    // This is a placeholder for the future API call
-    // Currently using the existing function to maintain functionality
     try {
       const result = await fetch('/api/stripe-verify', {
         method: 'POST',
@@ -113,6 +127,11 @@ const ExamStartPage = () => {
       setIsGeneratingExam(false);
     }
   };
+
+  const handleBuyExam = async () => {
+    if (!jobRole?.id) return;
+    buyExamMutation.mutate(jobRole.id);
+  };
   
   if (!user) {
     // Use navigate instead of Navigate component
@@ -135,6 +154,43 @@ const ExamStartPage = () => {
   }
   
   if (error) {
+    if (error === 'Payment required' && jobRole) {
+      return (
+        <div className="container max-w-4xl mx-auto px-4 py-12">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl">{jobRole.title} Certification Exam</CardTitle>
+              <CardDescription>Complete your purchase to access this certification exam.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <p className="text-xl font-semibold">
+                  Price: ${(jobRole.price_cents / 100).toFixed(2)} USD
+                </p>
+                <p className="text-muted-foreground">
+                  After completing your payment, you'll be redirected back to start the exam.
+                </p>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button 
+                onClick={handleBuyExam} 
+                className="w-full" 
+                disabled={buyExamMutation.isPending}
+              >
+                {buyExamMutation.isPending ? (
+                  <>
+                    <div className="mr-2 h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Processing...
+                  </>
+                ) : 'Pay & Start Exam'}
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      );
+    }
+    
     return (
       <div className="container max-w-4xl mx-auto px-4 py-12">
         <Alert variant="destructive">
@@ -180,6 +236,12 @@ const ExamStartPage = () => {
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary mr-2 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>
                     <span>Passing Score: {exam?.passingScore}%</span>
                   </li>
+                  {isFreeExam && (
+                    <li className="flex items-start">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-2 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                      <span className="font-semibold text-green-600">Free Exam</span>
+                    </li>
+                  )}
                 </ul>
               </div>
               

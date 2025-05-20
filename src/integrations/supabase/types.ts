@@ -16,6 +16,7 @@ export type Database = {
           created_at: string
           exam_id: string
           id: string
+          payment_bypass: boolean | null
           rank: string | null
           score_json: Json | null
           started_at: string
@@ -29,6 +30,7 @@ export type Database = {
           created_at?: string
           exam_id: string
           id?: string
+          payment_bypass?: boolean | null
           rank?: string | null
           score_json?: Json | null
           started_at?: string
@@ -42,6 +44,7 @@ export type Database = {
           created_at?: string
           exam_id?: string
           id?: string
+          payment_bypass?: boolean | null
           rank?: string | null
           score_json?: Json | null
           started_at?: string
