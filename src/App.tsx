@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Layout from "@/components/Layout";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import RequireAdmin from "@/guards/RequireAdmin";
 
 // Pages
 import HomePage from "@/pages/HomePage";
@@ -23,6 +24,7 @@ import AboutPage from "@/pages/AboutPage";
 import TermsPage from "@/pages/TermsPage";
 import PrivacyPage from "@/pages/PrivacyPage";
 import NotFoundPage from "@/pages/NotFoundPage";
+import AdminPage from "@/pages/AdminPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -71,6 +73,11 @@ const App = () => (
                 <ProtectedRoute>
                   <CertificatePage />
                 </ProtectedRoute>
+              } />
+              <Route path="/admin/*" element={
+                <RequireAdmin>
+                  <AdminPage />
+                </RequireAdmin>
               } />
               <Route path="/about" element={<AboutPage />} />
               <Route path="/terms" element={<TermsPage />} />

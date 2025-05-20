@@ -1,17 +1,44 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { AvatarImage, Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { supabase } from '@/integrations/supabase/client';
 
 const Navigation: React.FC = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const [isAdmin, setIsAdmin] = useState(false);
   
   // Get user's name from user metadata or email
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
   const userInitial = userName.charAt(0).toUpperCase();
+  
+  // Check if the user has admin role
+  useEffect(() => {
+    if (user) {
+      const checkAdminRole = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+            
+          if (error) throw error;
+          setIsAdmin(data?.role === 'admin');
+        } catch (error) {
+          console.error('Error checking admin status:', error);
+          setIsAdmin(false);
+        }
+      };
+      
+      checkAdminRole();
+    } else {
+      setIsAdmin(false);
+    }
+  }, [user]);
   
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
@@ -35,6 +62,14 @@ const Navigation: React.FC = () => {
                 className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/dashboard' ? 'text-primary' : 'text-muted-foreground'}`}
               >
                 Dashboard
+              </Link>
+            )}
+            {isAdmin && (
+              <Link 
+                to="/admin" 
+                className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname.startsWith('/admin') ? 'text-primary' : 'text-muted-foreground'}`}
+              >
+                Admin
               </Link>
             )}
             <Link 
