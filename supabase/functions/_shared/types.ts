@@ -5,7 +5,7 @@
  */
 
 // Stripe imports for type definitions
-import { Stripe } from "https://esm.sh/stripe@12.2.0";
+import Stripe from "https://esm.sh/stripe@12.2.0?target=deno&dts";
 
 export interface ExamType {
   id: string;
