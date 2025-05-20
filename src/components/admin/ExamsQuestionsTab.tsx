@@ -44,6 +44,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Json } from '@/integrations/supabase/types';
+import { Question } from '@/types';
 
 // Types
 interface JobRole {
@@ -59,14 +61,18 @@ interface Exam {
   passing_score: number;
 }
 
-interface Question {
+// Interface for DB question that will be converted to app Question
+interface DbQuestion {
   id: string;
   exam_id: string;
   body: string;
   type: string;
-  options: any[] | null;
+  options: Json | null;
   correct_answer: string | null;
   category: string | null;
+  difficulty: number | null;
+  created_at: string;
+  updated_at: string;
 }
 
 // Form schemas
@@ -86,6 +92,23 @@ const questionSchema = z.object({
 
 type ExamFormValues = z.infer<typeof examSchema>;
 type QuestionFormValues = z.infer<typeof questionSchema>;
+
+// Helper function to convert database question to app question
+const convertDbQuestionToAppQuestion = (dbQuestion: DbQuestion): Question => {
+  const options = dbQuestion.options ? 
+    (Array.isArray(dbQuestion.options) ? dbQuestion.options : []) : 
+    [];
+    
+  return {
+    id: dbQuestion.id,
+    text: dbQuestion.body,
+    options: options as string[],
+    type: dbQuestion.type === 'multiple_choice' ? 'multipleChoice' : 
+          dbQuestion.type === 'true_false' ? 'multipleChoice' : 'openEnded',
+    category: dbQuestion.category || '',
+    correctOption: dbQuestion.correct_answer ? parseInt(dbQuestion.correct_answer) : undefined
+  };
+};
 
 const ExamsQuestionsTab = () => {
   // State
@@ -201,7 +224,14 @@ const ExamsQuestionsTab = () => {
           .eq('exam_id', selectedExam.id);
 
         if (error) throw error;
-        setQuestions(data || []);
+        
+        // Convert database questions to app questions
+        if (data) {
+          const appQuestions = data.map(q => convertDbQuestionToAppQuestion(q as DbQuestion));
+          setQuestions(appQuestions);
+        } else {
+          setQuestions([]);
+        }
       } catch (error: any) {
         console.error('Error fetching questions:', error);
         toast({
@@ -246,7 +276,9 @@ const ExamsQuestionsTab = () => {
       }
       
       const newExam = {
-        ...values,
+        job_role_id: values.job_role_id, // Ensure job_role_id is properly set
+        time_limit_minutes: values.time_limit_minutes,
+        passing_score: values.passing_score,
         version: latestVersion + 1,
       };
       
@@ -349,9 +381,14 @@ const ExamsQuestionsTab = () => {
 
         if (error) throw error;
         
-        // Update local state
+        // Update local state with converted question
+        const updatedDbQuestion = {
+          ...currentQuestion,
+          ...questionData,
+        } as DbQuestion;
+        
         setQuestions(questions.map(q => 
-          q.id === currentQuestion.id ? { ...q, ...questionData } : q
+          q.id === currentQuestion.id ? convertDbQuestionToAppQuestion(updatedDbQuestion) : q
         ));
         
         toast({
@@ -368,7 +405,8 @@ const ExamsQuestionsTab = () => {
         if (error) throw error;
         
         if (data && data.length > 0) {
-          setQuestions([...questions, data[0]]);
+          const newAppQuestion = convertDbQuestionToAppQuestion(data[0] as DbQuestion);
+          setQuestions([...questions, newAppQuestion]);
         }
         
         toast({

@@ -1,4 +1,3 @@
-
 import { Tables } from '@/integrations/supabase/types';
 
 export interface User {
@@ -14,6 +13,7 @@ export interface JobRole {
   description: string;
   level: string;
   price: number;
+  price_cents?: number; // Add this property for direct database value access
   imageUrl: string;
 }
 
@@ -65,6 +65,7 @@ export const mapJobRoleFromDb = (jobRole: Tables<'job_roles'>): JobRole => ({
   description: jobRole.description,
   level: jobRole.level || '',
   price: jobRole.price_cents / 100, // Convert cents to dollars
+  price_cents: jobRole.price_cents, // Add the raw price_cents value
   imageUrl: jobRole.image_url || '',
 });
 

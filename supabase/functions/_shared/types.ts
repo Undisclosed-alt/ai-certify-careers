@@ -4,8 +4,14 @@
  * Type definitions for core entities used across Edge Functions
  */
 
-// Stripe imports for type definitions
-import Stripe from "https://esm.sh/stripe@12.2.0?target=deno&dts";
+// Skip Stripe imports since they're causing issues
+// We'll define the minimal types we need
+interface StripeEventMetadataBase {
+  eventId: string;
+  eventType: string;
+  objectId: string;
+  objectType: string;
+}
 
 export interface ExamType {
   id: string;
@@ -56,9 +62,4 @@ export interface LogMetadata {
 }
 
 // Types for Stripe Events we handle
-export interface StripeEventMetadata {
-  eventId: string;
-  eventType: string;
-  objectId: string;
-  objectType: string;
-}
+export interface StripeEventMetadata extends StripeEventMetadataBase {}
