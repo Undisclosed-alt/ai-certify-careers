@@ -152,7 +152,7 @@ const JobRolesTab = () => {
       console.error('Error deleting job role:', error);
       toast({
         title: 'Error',
-        description: 'Failed to delete job role',
+        description: error.message || 'Failed to delete job role',
         variant: 'destructive',
       });
     }
@@ -224,6 +224,7 @@ const JobRolesTab = () => {
         description: error.message || 'Failed to save job role',
         variant: 'destructive',
       });
+      // Not closing the dialog on error so user can fix and retry
     }
   };
 
@@ -270,7 +271,7 @@ const JobRolesTab = () => {
                     <TableCell>{jobRole.level || '-'}</TableCell>
                     <TableCell>
                       {jobRole.price_cents === 0 ? (
-                        <Badge variant="secondary">Free</Badge>
+                        <Badge variant="success">Free</Badge>
                       ) : (
                         `${(jobRole.price_cents / 100).toFixed(2)} USD`
                       )}
