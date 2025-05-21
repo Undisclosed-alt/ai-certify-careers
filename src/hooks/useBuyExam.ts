@@ -38,7 +38,7 @@ export function useBuyExam() {
       }
       
       // If the job role is free, create an attempt directly
-      if (jobRole.price_cents === 0) {
+      if (Number(jobRole.price_cents) === 0) {
         const data = await callEdge<CreateAttemptResponse>("attempt-create", {
           method: "POST",
           body: { jobRoleId }
