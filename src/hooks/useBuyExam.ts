@@ -15,10 +15,6 @@ interface CreateAttemptResponse {
   };
 }
 
-interface JobRolePrice {
-  price_cents: number;   // we will coerce string → number
-}
-
 /**
  * Hook for initiating exam purchase or creating a free attempt
  */
@@ -28,12 +24,12 @@ export function useBuyExam() {
 
   return useMutation({
     mutationFn: async (jobRoleId: string) => {
-      /* -------------------------------------------------------------
-       * 1. Fetch job role price (typed)
-       * ----------------------------------------------------------- */
+      // ────────────────────────────────────────────────────────────
+      // 1. Fetch the job role price (returns price_cents as string)
+      // ────────────────────────────────────────────────────────────
       const { data: jobRole, error: jobRoleError } = await supabase
         .from("job_roles")
-        .select<JobRolePrice>("price_cents")
+        .select("price_cents")          // fetch only the price column
         .eq("id", jobRoleId)
         .single();
 
@@ -41,11 +37,11 @@ export function useBuyExam() {
         throw new Error(`Failed to fetch job role: ${jobRoleError.message}`);
       }
 
-      const price = Number(jobRole?.price_cents);
+      const price = Number(jobRole?.price_cents); // string → number
 
-      /* -------------------------------------------------------------
-       * 2. FREE flow – create attempt, no Stripe
-       * ----------------------------------------------------------- */
+      // ────────────────────────────────────────────────────────────
+      // 2. FREE flow – skip Stripe, create attempt directly
+      // ────────────────────────────────────────────────────────────
       if (price === 0) {
         const data = await callEdge<CreateAttemptResponse>("attempt-create", {
           method: "POST",
@@ -62,9 +58,9 @@ export function useBuyExam() {
         return data;
       }
 
-      /* -------------------------------------------------------------
-       * 3. PAID flow – create Stripe Checkout session
-       * ----------------------------------------------------------- */
+      // ────────────────────────────────────────────────────────────
+      // 3. PAID flow – create Stripe Checkout session
+      // ────────────────────────────────────────────────────────────
       const data = await callEdge<BuyExamResponse>("stripe-checkout", {
         method: "POST",
         body: { jobRoleId },
