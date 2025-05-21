@@ -1,5 +1,4 @@
-
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { callEdge } from "@/lib/api";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -13,7 +12,11 @@ interface CreateAttemptResponse {
   attempt: {
     id: string;
     exam_id: string;
-  }
+  };
+}
+
+interface JobRolePrice {
+  price_cents: number;   // we will coerce string → number
 }
 
 /**
@@ -23,55 +26,61 @@ export function useBuyExam() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Combined mutation that checks price and routes to appropriate action
   return useMutation({
     mutationFn: async (jobRoleId: string) => {
-      // Fetch the job role to check if it's free
+      /* -------------------------------------------------------------
+       * 1. Fetch job role price (typed)
+       * ----------------------------------------------------------- */
       const { data: jobRole, error: jobRoleError } = await supabase
-        .from('job_roles')
-        .select('price_cents')
-        .eq('id', jobRoleId)
+        .from("job_roles")
+        .select<JobRolePrice>("price_cents")
+        .eq("id", jobRoleId)
         .single();
-      
+
       if (jobRoleError) {
         throw new Error(`Failed to fetch job role: ${jobRoleError.message}`);
       }
-      
-      // If the job role is free, create an attempt directly
-      if (Number(jobRole.price_cents) === 0) {
+
+      const price = Number(jobRole?.price_cents);
+
+      /* -------------------------------------------------------------
+       * 2. FREE flow – create attempt, no Stripe
+       * ----------------------------------------------------------- */
+      if (price === 0) {
         const data = await callEdge<CreateAttemptResponse>("attempt-create", {
           method: "POST",
-          body: { jobRoleId }
+          body: { jobRoleId },
         });
-        
-        // Navigate to the exam page
+
         navigate(`/exam/${data.attempt.id}`);
-        
+
         toast({
           title: "Success",
           description: "Your free exam is ready!",
         });
-        
-        return data;
-      } else {
-        // For paid exams, create a checkout session
-        const data = await callEdge<BuyExamResponse>("stripe-checkout", {
-          method: "POST",
-          body: { jobRoleId }
-        });
-        
-        // Redirect to Stripe checkout
-        window.location.href = data.checkoutUrl;
+
         return data;
       }
+
+      /* -------------------------------------------------------------
+       * 3. PAID flow – create Stripe Checkout session
+       * ----------------------------------------------------------- */
+      const data = await callEdge<BuyExamResponse>("stripe-checkout", {
+        method: "POST",
+        body: { jobRoleId },
+      });
+
+      window.location.href = data.checkoutUrl;
+      return data;
     },
+
     onError: (error) => {
       console.error("Error processing exam request:", error);
       toast({
         title: "Error",
         description: "Failed to process your request. Please try again.",
-        variant: "destructive"
+        variant: "destructive",
       });
-    }
+    },
   });
 }
