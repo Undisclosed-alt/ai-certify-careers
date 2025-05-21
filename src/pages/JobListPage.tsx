@@ -79,12 +79,18 @@ const JobListPage = () => {
               <CardContent>
                 <p className="text-muted-foreground mb-4">{role.description}</p>
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-lg">${role.price.toFixed(2)}</span>
+                  {role.price_cents === 0 ? (
+                    <span className="font-semibold text-lg text-green-600">Free</span>
+                  ) : (
+                    <span className="font-semibold text-lg">${(role.price_cents / 100).toFixed(2)}</span>
+                  )}
                 </div>
               </CardContent>
               <CardFooter>
                 <Link to={`/jobs/${role.id}`} className="w-full">
-                  <Button className="w-full">View Details</Button>
+                  <Button className="w-full">
+                    {role.price_cents === 0 ? 'Start Exam' : 'View Details'}
+                  </Button>
                 </Link>
               </CardFooter>
             </Card>

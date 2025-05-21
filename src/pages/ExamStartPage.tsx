@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -15,44 +15,122 @@ const ExamStartPage = () => {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const params = useParams();
   const [jobRole, setJobRole] = useState<JobRole | null>(null);
   const [exam, setExam] = useState<Exam | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isVerifyingPayment, setIsVerifyingPayment] = useState(true);
+  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   const [isGeneratingExam, setIsGeneratingExam] = useState(false);
   const [isFreeExam, setIsFreeExam] = useState(false);
   const { toast } = useToast();
   const buyExamMutation = useBuyExam();
   
-  // Get the job role ID and session ID from the URL
+  // Get the job role ID, attempt ID, and session ID from the URL
   const searchParams = new URLSearchParams(location.search);
   const roleId = searchParams.get('role');
+  const routeAttemptId = params.id || searchParams.get("attempt_id"); // From route params or query
   const sessionId = searchParams.get('session_id');
   
   useEffect(() => {
     const verifyAndLoadExam = async () => {
-      if (!roleId || !user) {
-        setError('Missing required information');
+      if (!user) {
+        setError('Authentication required');
         setIsLoading(false);
-        setIsVerifyingPayment(false);
         return;
       }
       
-      try {
-        // Load job role
-        const roleData = await getJobRoleById(roleId);
-        if (!roleData) {
-          setError('Job role not found');
+      // Case 1: Direct attempt ID provided (free exam path)
+      if (routeAttemptId) {
+        try {
+          setIsVerifyingPayment(false);
+          
+          // Fetch the attempt to get the exam ID
+          const { data: attempt, error: attemptError } = await supabase
+            .from('attempts')
+            .select('exam_id, payment_bypass')
+            .eq('id', routeAttemptId)
+            .single();
+          
+          if (attemptError || !attempt) {
+            setError('Invalid attempt ID');
+            setIsLoading(false);
+            return;
+          }
+          
+          // Verify this is a legitimate free attempt
+          if (!attempt.payment_bypass) {
+            setError('Payment required for this attempt');
+            setIsLoading(false);
+            return;
+          }
+          
+          // Get the exam data
+          const { data: examData, error: examError } = await supabase
+            .from('exams')
+            .select('*, job_role_id')
+            .eq('id', attempt.exam_id)
+            .single();
+          
+          if (examError || !examData) {
+            setError('Failed to load exam data');
+            setIsLoading(false);
+            return;
+          }
+          
+          // Get the job role data
+          const roleData = await getJobRoleById(examData.job_role_id);
+          if (!roleData) {
+            setError('Job role not found');
+            setIsLoading(false);
+            return;
+          }
+          
+          setJobRole(roleData);
+          setIsFreeExam(roleData.price_cents === 0);
+          
+          // Generate exam
+          const generatedExam = await generateExamForJobRole(roleData.id);
+          setExam(generatedExam);
           setIsLoading(false);
+          
+          toast({
+            title: "Exam Ready",
+            description: "Your certification exam has been generated.",
+          });
+        } catch (error: any) {
+          console.error('Failed to prepare exam:', error);
+          setError('Failed to prepare the exam. Please try again.');
+          setIsLoading(false);
+        }
+        
+        return;
+      }
+      
+      // Case 2: Session ID provided (paid exam path)
+      if (sessionId) {
+        setIsVerifyingPayment(true);
+        
+        if (!roleId) {
+          setError('Missing role ID');
+          setIsLoading(false);
+          setIsVerifyingPayment(false);
           return;
         }
         
-        setJobRole(roleData);
-        setIsFreeExam(roleData.price_cents === 0);
-        
-        // If this is coming from a payment session, verify payment
-        if (sessionId) {
+        try {
+          // Load job role
+          const roleData = await getJobRoleById(roleId);
+          if (!roleData) {
+            setError('Job role not found');
+            setIsLoading(false);
+            setIsVerifyingPayment(false);
+            return;
+          }
+          
+          setJobRole(roleData);
+          setIsFreeExam(roleData.price_cents === 0);
+          
           // Verify payment
           const isPaymentValid = await verifyPaymentViaApi(sessionId);
           setIsVerifyingPayment(false);
@@ -62,35 +140,64 @@ const ExamStartPage = () => {
             setIsLoading(false);
             return;
           }
-        } else if (!isFreeExam) {
-          // No session ID and not a free exam, so they need to pay
-          setError('Payment required');
+          
+          // Generate exam
+          const generatedExam = await generateExamForJobRole(roleId);
+          setExam(generatedExam);
           setIsLoading(false);
-          return;
-        } else {
-          // Free exam, no need to verify payment
+          
+          toast({
+            title: "Exam Ready",
+            description: "Your certification exam has been generated.",
+          });
+        } catch (error: any) {
+          console.error('Failed to prepare exam:', error);
+          setError('Failed to prepare the exam. Please try again.');
+          setIsLoading(false);
           setIsVerifyingPayment(false);
         }
         
-        // Generate exam
-        const generatedExam = await generateExamForJobRole(roleId);
-        setExam(generatedExam);
-        setIsLoading(false);
-        
-        toast({
-          title: "Exam Ready",
-          description: "Your certification exam has been generated.",
-        });
-      } catch (error: any) {
-        console.error('Failed to prepare exam:', error);
-        setError('Failed to prepare the exam. Please try again.');
-        setIsLoading(false);
-        setIsVerifyingPayment(false);
+        return;
       }
+      
+      // Case 3: Role ID provided (starting point)
+      if (roleId) {
+        try {
+          // Load job role
+          const roleData = await getJobRoleById(roleId);
+          if (!roleData) {
+            setError('Job role not found');
+            setIsLoading(false);
+            return;
+          }
+          
+          setJobRole(roleData);
+          setIsFreeExam(roleData.price_cents === 0);
+          
+          // For free exams, we can show the start page directly
+          if (roleData.price_cents === 0) {
+            // Generate exam
+            const generatedExam = await generateExamForJobRole(roleId);
+            setExam(generatedExam);
+          }
+          
+          setIsLoading(false);
+        } catch (error: any) {
+          console.error('Failed to prepare exam:', error);
+          setError('Failed to prepare the exam. Please try again.');
+          setIsLoading(false);
+        }
+        
+        return;
+      }
+      
+      // Case 4: No identifiers provided
+      setError('Missing required information');
+      setIsLoading(false);
     };
     
     verifyAndLoadExam();
-  }, [roleId, sessionId, user, toast]);
+  }, [roleId, routeAttemptId, sessionId, user, toast]);
   
   // Simple method to verify payment - will be replaced by API call
   const verifyPaymentViaApi = async (sessionId: string) => {

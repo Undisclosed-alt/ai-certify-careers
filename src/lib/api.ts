@@ -37,5 +37,9 @@ export async function callEdge<T>(
     throw new Error(error.message || `Failed to call ${fnName}`);
   }
 
+  if (!data) {
+    throw new Error(`No data returned from ${fnName}`);
+  }
+
   return data as T;
 }
