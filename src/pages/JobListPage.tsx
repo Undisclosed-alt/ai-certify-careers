@@ -1,11 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { JobRole } from '@/types';
 import { getJobRoles } from '@/services/dataService';
+import { JobRoleCard } from '@/components/JobRoleCard';
 
 const JobListPage = () => {
   const [jobRoles, setJobRoles] = useState<JobRole[]>([]);
@@ -60,40 +58,7 @@ const JobListPage = () => {
       ) : filteredJobRoles.length > 0 ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredJobRoles.map((role) => (
-            <Card key={role.id} className="overflow-hidden transition-all hover:shadow-lg">
-              <div className="aspect-video w-full overflow-hidden">
-                <img 
-                  src={role.imageUrl} 
-                  alt={role.title} 
-                  className="w-full h-full object-cover transition-transform hover:scale-105"
-                />
-              </div>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-bold">{role.title}</h3>
-                  <span className="text-sm bg-brand-100 text-brand-700 py-1 px-2 rounded-full">
-                    {role.level}
-                  </span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground mb-4">{role.description}</p>
-                <div className="flex items-center justify-between">
-                  {role.price_cents === 0 ? (
-                    <span className="font-semibold text-lg text-green-600">Free</span>
-                  ) : (
-                    <span className="font-semibold text-lg">${(role.price_cents / 100).toFixed(2)}</span>
-                  )}
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Link to={`/jobs/${role.id}`} className="w-full">
-                  <Button className="w-full">
-                    {role.price_cents === 0 ? 'Start Exam' : 'View Details'}
-                  </Button>
-                </Link>
-              </CardFooter>
-            </Card>
+            <JobRoleCard key={role.id} jobRole={role} />
           ))}
         </div>
       ) : (
