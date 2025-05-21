@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useQueryClient } from '@tanstack/react-query';
 
 // Define the schema for job roles
 const jobRoleSchema = z.object({
@@ -65,6 +66,7 @@ const JobRolesTab = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [currentJobRole, setCurrentJobRole] = useState<JobRole | null>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const form = useForm<JobRoleFormValues>({
     resolver: zodResolver(jobRoleSchema),
@@ -185,10 +187,15 @@ const JobRolesTab = () => {
           )
         );
 
+        // Invalidate any related queries
+        queryClient.invalidateQueries({ queryKey: ['jobRoles'] });
+
         toast({
           title: 'Success',
           description: 'Job role updated successfully',
         });
+        
+        setIsDialogOpen(false);
       } else {
         // Create new job role
         const { data, error } = await supabase
@@ -210,13 +217,16 @@ const JobRolesTab = () => {
           setJobRoles((prev) => [data[0], ...prev]);
         }
 
+        // Invalidate any related queries
+        queryClient.invalidateQueries({ queryKey: ['jobRoles'] });
+
         toast({
           title: 'Success',
           description: 'Job role created successfully',
         });
+        
+        setIsDialogOpen(false);
       }
-
-      setIsDialogOpen(false);
     } catch (error: any) {
       console.error('Error saving job role:', error);
       toast({

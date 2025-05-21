@@ -75,6 +75,12 @@ interface DbQuestion {
   updated_at: string;
 }
 
+// Extending the Question interface from @/types to match our needs
+interface ExtendedQuestion extends Question {
+  body?: string;
+  correct_answer?: string | null;
+}
+
 // Form schemas
 const examSchema = z.object({
   job_role_id: z.string().min(1, "Job role is required"),
@@ -94,7 +100,7 @@ type ExamFormValues = z.infer<typeof examSchema>;
 type QuestionFormValues = z.infer<typeof questionSchema>;
 
 // Helper function to convert database question to app question
-const convertDbQuestionToAppQuestion = (dbQuestion: DbQuestion): Question => {
+const convertDbQuestionToAppQuestion = (dbQuestion: DbQuestion): ExtendedQuestion => {
   const options = dbQuestion.options ? 
     (Array.isArray(dbQuestion.options) ? dbQuestion.options : []) : 
     [];
@@ -102,11 +108,13 @@ const convertDbQuestionToAppQuestion = (dbQuestion: DbQuestion): Question => {
   return {
     id: dbQuestion.id,
     text: dbQuestion.body,
+    body: dbQuestion.body, // Adding body to be compatible with both interfaces
     options: options as string[],
     type: dbQuestion.type === 'multiple_choice' ? 'multipleChoice' : 
           dbQuestion.type === 'true_false' ? 'multipleChoice' : 'openEnded',
     category: dbQuestion.category || '',
-    correctOption: dbQuestion.correct_answer ? parseInt(dbQuestion.correct_answer) : undefined
+    correctOption: dbQuestion.correct_answer ? parseInt(dbQuestion.correct_answer) : undefined,
+    correct_answer: dbQuestion.correct_answer // Adding correct_answer to be compatible
   };
 };
 
@@ -116,13 +124,13 @@ const ExamsQuestionsTab = () => {
   const [selectedJobRoleId, setSelectedJobRoleId] = useState<string | null>(null);
   const [exams, setExams] = useState<Exam[]>([]);
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [questions, setQuestions] = useState<ExtendedQuestion[]>([]);
   const [isLoadingJobRoles, setIsLoadingJobRoles] = useState(true);
   const [isLoadingExams, setIsLoadingExams] = useState(false);
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
   const [isExamDialogOpen, setIsExamDialogOpen] = useState(false);
   const [isQuestionDialogOpen, setIsQuestionDialogOpen] = useState(false);
-  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
+  const [currentQuestion, setCurrentQuestion] = useState<ExtendedQuestion | null>(null);
   const { toast } = useToast();
 
   // Forms
@@ -311,7 +319,7 @@ const ExamsQuestionsTab = () => {
   };
 
   // Handle adding/editing question
-  const handleQuestionAction = (question: Question | null = null) => {
+  const handleQuestionAction = (question: ExtendedQuestion | null = null) => {
     setCurrentQuestion(question);
     
     if (question) {
@@ -321,11 +329,11 @@ const ExamsQuestionsTab = () => {
         : '';
         
       questionForm.reset({
-        body: question.body,
+        body: question.text || question.body || '',
         type: question.type,
         category: question.category || '',
         options: optionsString,
-        correct_answer: question.correct_answer || '',
+        correct_answer: question.correct_answer || (question.correctOption !== undefined ? question.correctOption.toString() : ''),
       });
     } else {
       questionForm.reset({
@@ -382,9 +390,12 @@ const ExamsQuestionsTab = () => {
         if (error) throw error;
         
         // Update local state with converted question
-        const updatedDbQuestion = {
-          ...currentQuestion,
+        const updatedDbQuestion: DbQuestion = {
           ...questionData,
+          id: currentQuestion.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          difficulty: null
         } as DbQuestion;
         
         setQuestions(questions.map(q => 
@@ -550,7 +561,7 @@ const ExamsQuestionsTab = () => {
                   {questions.map((question) => (
                     <TableRow key={question.id}>
                       <TableCell className="max-w-md truncate">
-                        {question.body}
+                        {question.text || question.body}
                       </TableCell>
                       <TableCell>{question.type}</TableCell>
                       <TableCell>{question.category || '-'}</TableCell>
