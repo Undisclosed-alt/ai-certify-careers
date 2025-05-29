@@ -10,25 +10,41 @@ import {
 import { JobRole } from "@/types";
 import { useBuyExam } from "@/hooks/useBuyExam";
 
-interface Props {
+interface JobRoleCardProps {
   jobRole: JobRole;
 }
 
-export const JobRoleCard: React.FC<Props> = ({ jobRole }) => {
+export const JobRoleCard: React.FC<JobRoleCardProps> = ({ jobRole }) => {
   const navigate = useNavigate();
   const buyExam = useBuyExam();
 
-  const handleCardClick = () => {
-    if (!buyExam.isPending) {
-      navigate(`/jobs/${jobRole.id}`);
-    }
+  /* -----------------------------------------------------------
+   *  Card click -> open detail page
+   *  BUT ignore clicks that originated on the action <Button>.
+   * --------------------------------------------------------- */
+  const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("button")) return; // Button was clicked -> ignore
+    if (!buyExam.isPending) navigate(`/jobs/${jobRole.id}`);
   };
+
+  /* -----------------------------------------------------------
+   *  Button click -> start / buy exam
+   * --------------------------------------------------------- */
+  const handleButtonClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation(); // prevent card onClick
+    buyExam.mutate(jobRole.id);
+  };
+
+  const isFree = jobRole.price_cents === 0;
 
   return (
     <Card
       className="overflow-hidden transition-all hover:shadow-lg cursor-pointer"
       onClick={handleCardClick}
     >
+      {/* thumbnail */}
       <div className="aspect-video w-full overflow-hidden">
         <img
           src={jobRole.imageUrl}
@@ -37,6 +53,7 @@ export const JobRoleCard: React.FC<Props> = ({ jobRole }) => {
         />
       </div>
 
+      {/* header */}
       <CardHeader>
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-bold">{jobRole.title}</h3>
@@ -46,9 +63,10 @@ export const JobRoleCard: React.FC<Props> = ({ jobRole }) => {
         </div>
       </CardHeader>
 
+      {/* description + price */}
       <CardContent>
         <p className="text-muted-foreground mb-4">{jobRole.description}</p>
-        {jobRole.price_cents === 0 ? (
+        {isFree ? (
           <span className="font-semibold text-lg text-green-600">Free</span>
         ) : (
           <span className="font-semibold text-lg">
@@ -57,17 +75,18 @@ export const JobRoleCard: React.FC<Props> = ({ jobRole }) => {
         )}
       </CardContent>
 
+      {/* action button */}
       <CardFooter>
         <Button
           className="w-full"
-          onClick={(e) => {
-            e.preventDefault();      // stop link navigation
-            e.stopPropagation();     // stop card click
-            buyExam.mutate(jobRole.id);
-          }}
           disabled={buyExam.isPending}
+          onClick={handleButtonClick}
         >
-          {buyExam.isPending ? "Processing…" : jobRole.price_cents === 0 ? "Start Exam" : "Take Exam"}
+          {buyExam.isPending
+            ? "Processing…"
+            : isFree
+            ? "Start Exam"
+            : "Take Exam"}
         </Button>
       </CardFooter>
     </Card>
