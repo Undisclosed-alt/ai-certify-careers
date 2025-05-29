@@ -1,55 +1,65 @@
 import { useMutation } from "@tanstack/react-query";
 import { callEdge } from "@/lib/api";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
-interface BuyExamResponse {
+interface StripeCheckout {
   checkoutUrl: string;
 }
 
-interface CreateAttemptResponse {
+interface AttemptCreateResponse {
   attempt: { id: string; exam_id: string };
+  exam: any; // you can type this more strictly if desired
 }
 
 export function useBuyExam() {
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (jobRoleId: string) => {
-      // 1️⃣  Grab price
+      // ── get price ───────────────────────────────────
       const { data: jobRole, error } = await supabase
         .from("job_roles")
         .select("price_cents")
         .eq("id", jobRoleId)
         .single();
 
-      if (error || !jobRole) throw new Error("Job role fetch failed");
+      if (error || !jobRole) {
+        throw new Error("Failed to fetch job role price");
+      }
 
-      // 2️⃣  FREE flow  ➜  test redirect to Google
+      // ── FREE exam flow ──────────────────────────────
       if (Number(jobRole.price_cents) === 0) {
-        await callEdge<CreateAttemptResponse>("attempt-create", {
+        const data = await callEdge<AttemptCreateResponse>("attempt-create", {
           method: "POST",
           body: { jobRoleId },
         });
 
-        // 👇 *** TEST REDIRECT ***  (remove after debugging)
-        window.location.href = "https://google.com";
+        // pass exam + attemptId via router state
+        navigate(`/exam/${data.attempt.id}`, {
+          state: { exam: data.exam, attemptId: data.attempt.id },
+        });
+
+        toast({ title: "Success", description: "Your free exam is ready!" });
         return;
       }
 
-      // 3️⃣  PAID flow  ➜  normal Stripe checkout
-      const data = await callEdge<BuyExamResponse>("stripe-checkout", {
+      // ── PAID exam flow ──────────────────────────────
+      const stripe = await callEdge<StripeCheckout>("stripe-checkout", {
         method: "POST",
         body: { jobRoleId },
       });
-      window.location.href = data.checkoutUrl;
+
+      window.location.href = stripe.checkoutUrl;
     },
 
     onError: (err) => {
       console.error("Exam purchase error:", err);
       toast({
         title: "Error",
-        description: "Failed to start exam. Please try again.",
+        description: "Could not start the exam. Please try again.",
         variant: "destructive",
       });
     },
