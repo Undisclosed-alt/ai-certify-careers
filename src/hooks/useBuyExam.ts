@@ -42,21 +42,17 @@ export function useBuyExam() {
       // ────────────────────────────────────────────────────────────
       // 2. FREE flow – skip Stripe, create attempt directly
       // ────────────────────────────────────────────────────────────
-      if (price === 0) {
-        const data = await callEdge<CreateAttemptResponse>("attempt-create", {
-          method: "POST",
-          body: { jobRoleId },
-        });
+  if (price === 0) {
+  const data = await callEdge<CreateAttemptResponse>("attempt-create", {
+    method: "POST",
+    body: { jobRoleId },
+  });
 
-        navigate(`/exam/${data.attempt.id}`);
+  navigate(`/exam/${data.attempt.id}`);       // <— add
 
-        toast({
-          title: "Success",
-          description: "Your free exam is ready!",
-        });
-
-        return data;
-      }
+  toast({ title: "Success", description: "Your free exam is ready!" });
+  return data;
+}
 
       // ────────────────────────────────────────────────────────────
       // 3. PAID flow – create Stripe Checkout session
