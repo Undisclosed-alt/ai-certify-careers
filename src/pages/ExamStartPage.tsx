@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -214,35 +215,25 @@ const ExamStartPage = () => {
     }
   };
   
- const handleStartExam = async () => {
-  if (!user || !exam) return;
-
-  /* ---------- Free-exam short-circuit ---------- */
-  if (isFreeExam && routeAttemptId) {
-    navigate(`/exam/${routeAttemptId}`, {
-      state: { exam, attemptId: routeAttemptId }
-    });
-    return;           // nothing else to create
-  }
-  /* -------------------------------------------- */
-
-  setIsGeneratingExam(true);
-
-  try {
-    const examAttempt = await startExamAttempt(user.id, exam.id);
-    navigate(`/exam/${examAttempt.id}`, {
-      state: { exam, attemptId: examAttempt.id }
-    });
-  } catch (err) {
-    console.error("Failed to start exam:", err);
-    toast({
-      title: "Error",
-      description: "Failed to start the exam. Please try again.",
-      variant: "destructive"
-    });
-    setIsGeneratingExam(false);
-  }
-};
+  const handleStartExam = async () => {
+    if (!user || !exam) return;
+    
+    setIsGeneratingExam(true);
+    
+    try {
+      // This will be replaced by our hooks in the future
+      const examAttempt = await startExamAttempt(user.id, exam.id);
+      navigate(`/exam/${examAttempt.id}`, { state: { exam, attemptId: examAttempt.id } });
+    } catch (error) {
+      console.error('Failed to start exam:', error);
+      toast({
+        title: "Error",
+        description: "Failed to start the exam. Please try again.",
+        variant: "destructive"
+      });
+      setIsGeneratingExam(false);
+    }
+  };
 
   const handleBuyExam = async () => {
     if (!jobRole?.id) return;
