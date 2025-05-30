@@ -8,12 +8,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
-/* ----------- types returned by the edge functions ------------------------ */
+/* ── Types returned by edge functions ------------------------------------- */
 interface AttemptCreateResponse {
   attempt: { id: string; exam_id: string };
-  exam: unknown; // replace with your Exam interface if available
+  exam: unknown;          // replace with a concrete type if you have one
 }
-
 interface StripeCheckout {
   checkoutUrl: string;
 }
@@ -25,7 +24,7 @@ export function useBuyExam() {
 
   return useMutation({
     mutationFn: async (jobRoleId: string) => {
-      /* 1 ── fetch the price for this job-role ----------------------------- */
+      /* 1 ── fetch price --------------------------------------------------- */
       const { data: jobRole, error: priceErr } = await supabase
         .from("job_roles")
         .select("price_cents")
@@ -36,12 +35,11 @@ export function useBuyExam() {
         throw new Error("Could not fetch price for this exam.");
       }
 
-      /* 2 ── get the current authenticated user --------------------------- */
+      /* 2 ── current user -------------------------------------------------- */
       const {
         data: { user },
         error: authErr,
       } = await supabase.auth.getUser();
-
       if (authErr || !user) {
         throw new Error("User not authenticated.");
       }
@@ -53,15 +51,15 @@ export function useBuyExam() {
           body: { jobRoleId, userId: user.id },
         });
 
-        navigate(`/exam/${data.attempt.id}`, {
-          state: { exam: data.exam, attemptId: data.attempt.id },
-        });
+        /* ⚠️  Route via exam-start, NOT directly to the exam page */
+        navigate(
+          `/exam/start?attempt_id=${data.attempt.id}&role=${jobRoleId}`,
+        );
 
         toast({
           title: "Success",
           description: "Your free exam is ready!",
         });
-
         return;
       }
 
