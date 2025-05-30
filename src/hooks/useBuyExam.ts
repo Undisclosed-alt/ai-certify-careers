@@ -1,17 +1,23 @@
+/* -------------------------------------------------------------------------- */
+/*  src/hooks/useBuyExam.ts                                                   */
+/* -------------------------------------------------------------------------- */
+
 import { useMutation } from "@tanstack/react-query";
 import { callEdge } from "@/lib/api";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
+/* ----------- types returned by the edge functions ------------------------ */
+interface AttemptCreateResponse {
+  attempt: { id: string; exam_id: string };
+  exam: unknown; // replace with your Exam interface if available
+}
+
 interface StripeCheckout {
   checkoutUrl: string;
 }
-
-interface AttemptCreateResponse {
-  attempt: { id: string; exam_id: string };
-  exam: any; // you can type this more strictly if desired
-}
+/* ------------------------------------------------------------------------ */
 
 export function useBuyExam() {
   const navigate = useNavigate();
@@ -19,42 +25,59 @@ export function useBuyExam() {
 
   return useMutation({
     mutationFn: async (jobRoleId: string) => {
-      // ── get price ───────────────────────────────────
-      const { data: jobRole, error } = await supabase
+      /* 1 ── fetch the price for this job-role ----------------------------- */
+      const { data: jobRole, error: priceErr } = await supabase
         .from("job_roles")
         .select("price_cents")
         .eq("id", jobRoleId)
         .single();
 
-      if (error || !jobRole) {
-        throw new Error("Failed to fetch job role price");
+      if (priceErr || !jobRole) {
+        throw new Error("Could not fetch price for this exam.");
       }
 
-      // ── FREE exam flow ──────────────────────────────
+      /* 2 ── get the current authenticated user --------------------------- */
+      const {
+        data: { user },
+        error: authErr,
+      } = await supabase.auth.getUser();
+
+      if (authErr || !user) {
+        throw new Error("User not authenticated.");
+      }
+
+      /* 3 ── FREE exam flow ----------------------------------------------- */
       if (Number(jobRole.price_cents) === 0) {
         const data = await callEdge<AttemptCreateResponse>("attempt-create", {
           method: "POST",
-          body: { jobRoleId },
+          body: { jobRoleId, userId: user.id },
         });
 
-        // pass exam + attemptId via router state
         navigate(`/exam/${data.attempt.id}`, {
           state: { exam: data.exam, attemptId: data.attempt.id },
         });
 
-        toast({ title: "Success", description: "Your free exam is ready!" });
+        toast({
+          title: "Success",
+          description: "Your free exam is ready!",
+        });
+
         return;
       }
 
-      // ── PAID exam flow ──────────────────────────────
-      const stripe = await callEdge<StripeCheckout>("stripe-checkout", {
-        method: "POST",
-        body: { jobRoleId },
-      });
+      /* 4 ── PAID exam flow ----------------------------------------------- */
+      const { checkoutUrl } = await callEdge<StripeCheckout>(
+        "stripe-checkout",
+        {
+          method: "POST",
+          body: { jobRoleId, userId: user.id },
+        },
+      );
 
-      window.location.href = stripe.checkoutUrl;
+      window.location.href = checkoutUrl;
     },
 
+    /* 5 ── generic error handler ----------------------------------------- */
     onError: (err) => {
       console.error("Exam purchase error:", err);
       toast({
