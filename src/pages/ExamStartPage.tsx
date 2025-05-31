@@ -31,122 +31,87 @@ import { supabase } from "@/integrations/supabase/client";
 import { useStartAttempt } from "@/hooks/useStartAttempt";
 
 const ExamStartPage = () => {
-  /* ---------------------------------------------------------------------- */
-  /*  hooks / context                                                       */
-  /* ---------------------------------------------------------------------- */
+  /* ── context & router -------------------------------------------------- */
   const { user } = useAuth();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const params = useParams();
+  const location  = useLocation();
+  const navigate  = useNavigate();
+  const params    = useParams();
   const { toast } = useToast();
 
-  /* ---------------------------------------------------------------------- */
-  /*  state                                                                 */
-  /* ---------------------------------------------------------------------- */
-  const [jobRole, setJobRole]     = useState<JobRole | null>(null);
-  const [exam, setExam]           = useState<Exam | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError]         = useState<string | null>(null);
+  /* ── state ------------------------------------------------------------- */
+  const [jobRole, setJobRole]             = useState<JobRole | null>(null);
+  const [exam, setExam]                   = useState<Exam | null>(null);
+  const [isLoading, setIsLoading]         = useState(true);
+  const [error, setError]                 = useState<string | null>(null);
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   const [isGeneratingExam, setIsGeneratingExam]     = useState(false);
-  const [isFreeExam, setIsFreeExam] = useState(false);
+  const [isFreeExam, setIsFreeExam]       = useState(false);
 
-  /* ---------------------------------------------------------------------- */
-  /*  mutations                                                             */
-  /* ---------------------------------------------------------------------- */
-  const buyExamMutation                            = useBuyExam();
+  /* ── mutations --------------------------------------------------------- */
+  const buyExamMutation = useBuyExam();
   const {
     mutate: startAttempt,
     isLoading: isStartingAttempt,
-  }                                               = useStartAttempt();
+  } = useStartAttempt();
 
-  /* ---------------------------------------------------------------------- */
-  /*  query-string / route params                                           */
-  /* ---------------------------------------------------------------------- */
-  const searchParams    = new URLSearchParams(location.search);
-  const roleId          = searchParams.get("role");
-  const routeAttemptId  =
-    params.id || searchParams.get("attempt_id"); // attempt id from route OR query
-  const sessionId       = searchParams.get("session_id");
+  /* ── params ------------------------------------------------------------ */
+  const qs            = new URLSearchParams(location.search);
+  const roleId        = qs.get("role");
+  const routeAttemptId =
+    params.id || qs.get("attempt_id");          // free-flow attempt id
+  const sessionId     = qs.get("session_id");   // Stripe checkout flow
 
-  /* ---------------------------------------------------------------------- */
-  /*  effect: verify payment / load exam / etc.                             */
-  /* ---------------------------------------------------------------------- */
+  /* ── effect: prepare exam --------------------------------------------- */
   useEffect(() => {
-    const verifyAndLoadExam = async () => {
+    const prepare = async () => {
       if (!user) {
         setError("Authentication required");
         setIsLoading(false);
         return;
       }
 
-      /* ────────────── 1. FREE EXAM PATH (attempt_id present) ──────────── */
+      /* ---------- FREE flow (attempt_id) -------------------------------- */
       if (routeAttemptId) {
         try {
-          /* no payment verification for bypass attempts */
-          setIsVerifyingPayment(false);
-
-          /* fetch the attempt row */
-          const { data: attempt, error: attemptError } = await supabase
+          const { data: attempt, error: aErr } = await supabase
             .from("attempts")
             .select("exam_id, payment_bypass")
             .eq("id", routeAttemptId)
             .single();
+          if (aErr || !attempt) throw new Error("Invalid attempt ID");
+          if (!attempt.payment_bypass)
+            throw new Error("Payment required for this attempt");
 
-          if (attemptError || !attempt) {
-            setError("Invalid attempt ID");
-            setIsLoading(false);
-            return;
-          }
-
-          if (!attempt.payment_bypass) {
-            setError("Payment required for this attempt");
-            setIsLoading(false);
-            return;
-          }
-
-          /* fetch the exam row */
-          const { data: examData, error: examError } = await supabase
+          const { data: examRow, error: eErr } = await supabase
             .from("exams")
             .select("*, job_role_id")
             .eq("id", attempt.exam_id)
             .single();
+          if (eErr || !examRow) throw new Error("Failed to load exam data");
 
-          if (examError || !examData) {
-            setError("Failed to load exam data");
-            setIsLoading(false);
-            return;
-          }
+          const role = await getJobRoleById(examRow.job_role_id);
+          if (!role) throw new Error("Job role not found");
 
-          /* fetch job role */
-          const roleData = await getJobRoleById(examData.job_role_id);
-          if (!roleData) {
-            setError("Job role not found");
-            setIsLoading(false);
-            return;
-          }
+          setJobRole(role);
+          setIsFreeExam(role.price_cents === 0);
 
-          setJobRole(roleData);
-          setIsFreeExam(roleData.price_cents === 0);
+          const generated = await generateExamForJobRole(role.id);
+          setExam(generated);
 
-          /* generate exam (your original logic) */
-          const generatedExam = await generateExamForJobRole(roleData.id);
-          setExam(generatedExam);
-
-          setIsLoading(false);
           toast({
             title: "Exam Ready",
             description: "Your certification exam has been generated.",
           });
+          setIsLoading(false);
         } catch (err: any) {
-          console.error("Failed to prepare exam:", err);
-          setError("Failed to prepare the exam. Please try again.");
+          console.error(err);
+          setError(err.message ?? "Failed to prepare the exam.");
           setIsLoading(false);
         }
         return;
       }
 
-      /* ────────────── 2. PAID EXAM PATH (session_id present) ──────────── */
+      /* ---------- Paid flow (session_id) -------------------------------- */
       if (sessionId) {
         setIsVerifyingPayment(true);
         if (!roleId) {
@@ -155,118 +120,97 @@ const ExamStartPage = () => {
           setIsVerifyingPayment(false);
           return;
         }
+
         try {
-          const roleData = await getJobRoleById(roleId);
-          if (!roleData) {
-            setError("Job role not found");
-            setIsLoading(false);
-            setIsVerifyingPayment(false);
-            return;
-          }
+          const role = await getJobRoleById(roleId);
+          if (!role) throw new Error("Job role not found");
 
-          setJobRole(roleData);
-          setIsFreeExam(roleData.price_cents === 0);
+          setJobRole(role);
+          setIsFreeExam(role.price_cents === 0);
 
-          /* verify payment (API) */
-          const isPaymentValid = await verifyPaymentViaApi(sessionId);
+          const ok = await verifyPaymentViaApi(sessionId);
           setIsVerifyingPayment(false);
+          if (!ok) throw new Error("Payment verification failed");
 
-          if (!isPaymentValid) {
-            setError("Payment verification failed");
-            setIsLoading(false);
-            return;
-          }
-
-          const generatedExam = await generateExamForJobRole(roleId);
-          setExam(generatedExam);
-          setIsLoading(false);
-
+          const generated = await generateExamForJobRole(role.id);
+          setExam(generated);
           toast({
             title: "Exam Ready",
             description: "Your certification exam has been generated.",
           });
+          setIsLoading(false);
         } catch (err: any) {
-          console.error("Failed to prepare exam:", err);
-          setError("Failed to prepare the exam. Please try again.");
+          console.error(err);
+          setError(err.message ?? "Failed to prepare the exam.");
           setIsLoading(false);
           setIsVerifyingPayment(false);
         }
         return;
       }
 
-      /* ────────────── 3. LANDING PATH (role id only) ───────────────────── */
+      /* ---------- Landing flow (role only) ------------------------------ */
       if (roleId) {
         try {
-          const roleData = await getJobRoleById(roleId);
-          if (!roleData) {
-            setError("Job role not found");
-            setIsLoading(false);
-            return;
+          const role = await getJobRoleById(roleId);
+          if (!role) throw new Error("Job role not found");
+
+          setJobRole(role);
+          setIsFreeExam(role.price_cents === 0);
+
+          if (role.price_cents === 0) {
+            const generated = await generateExamForJobRole(role.id);
+            setExam(generated);
           }
-
-          setJobRole(roleData);
-          setIsFreeExam(roleData.price_cents === 0);
-
-          if (roleData.price_cents === 0) {
-            const generatedExam = await generateExamForJobRole(roleId);
-            setExam(generatedExam);
-          }
-
           setIsLoading(false);
         } catch (err: any) {
-          console.error("Failed to prepare exam:", err);
-          setError("Failed to prepare the exam. Please try again.");
+          console.error(err);
+          setError(err.message ?? "Failed to prepare the exam.");
           setIsLoading(false);
         }
         return;
       }
 
-      /* ────────────── 4. no identifiers ───────────────────────────────── */
+      /* ---------- nothing supplied -------------------------------------- */
       setError("Missing required information");
       setIsLoading(false);
     };
 
-    verifyAndLoadExam();
+    prepare();
   }, [roleId, routeAttemptId, sessionId, user, toast]);
 
-  /* ---------------------------------------------------------------------- */
-  /*  helpers                                                               */
-  /* ---------------------------------------------------------------------- */
-  const verifyPaymentViaApi = async (sessionId: string) => {
+  /* ── helpers ----------------------------------------------------------- */
+  const verifyPaymentViaApi = async (sid: string) => {
     try {
-      const result = await fetch("/api/stripe-verify", {
+      const res = await fetch("/api/stripe-verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId }),
-      }).then((res) => res.json());
-      return result.success;
+        body: JSON.stringify({ sessionId: sid }),
+      }).then((r) => r.json());
+      return res.success;
     } catch (err) {
-      console.error("Error verifying payment:", err);
+      console.error("Stripe verify error:", err);
       return false;
     }
   };
 
-  /* ---------------------------------------------------------------------- */
-  /*  handlers                                                              */
-  /* ---------------------------------------------------------------------- */
+  /* ── handlers ---------------------------------------------------------- */
   const handleStartExam = async () => {
-    /* ── NEW: free-exam path handled by useStartAttempt ------------------ */
+    /* free-exam flow → edge function */
     if (routeAttemptId) {
       startAttempt(routeAttemptId);
       return;
     }
 
-    /* ── legacy path: role-only / paid exam (uses existing service) ------ */
+    /* paid / role-only flows (legacy service) */
     if (!user || !exam) return;
-
     try {
       setIsGeneratingExam(true);
-      const examAttempt = await startExamAttempt(user.id, exam.id);
-      navigate(`/exam/${examAttempt.id}`, {
-        state: { exam, attemptId: examAttempt.id },
+      const attempt = await startExamAttempt(user.id, exam.id);
+      navigate(`/exam/${attempt.id}`, {
+        state: { exam, attemptId: attempt.id },
       });
     } catch (err) {
-      console.error("Failed to start exam:", err);
+      console.error(err);
       toast({
         title: "Error",
         description: "Failed to start the exam. Please try again.",
@@ -278,13 +222,10 @@ const ExamStartPage = () => {
   };
 
   const handleBuyExam = () => {
-    if (!jobRole?.id) return;
-    buyExamMutation.mutate(jobRole.id);
+    if (jobRole?.id) buyExamMutation.mutate(jobRole.id);
   };
 
-  /* ---------------------------------------------------------------------- */
-  /*  redirects / loading / error UI                                        */
-  /* ---------------------------------------------------------------------- */
+  /* ── redirects / load & error UI (unchanged) --------------------------- */
   if (!user) {
     navigate("/login");
     return null;
@@ -295,9 +236,7 @@ const ExamStartPage = () => {
       <div className="container max-w-4xl mx-auto px-4 py-12 flex flex-col items-center justify-center">
         <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-6" />
         <h2 className="text-xl font-bold mb-2">
-          {isVerifyingPayment
-            ? "Verifying payment..."
-            : "Preparing your exam..."}
+          {isVerifyingPayment ? "Verifying payment…" : "Preparing your exam…"}
         </h2>
         <p className="text-muted-foreground">
           This will only take a moment. Please don&apos;t close this page.
@@ -339,7 +278,7 @@ const ExamStartPage = () => {
                 {buyExamMutation.isPending ? (
                   <>
                     <div className="mr-2 h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Processing...
+                    Processing…
                   </>
                 ) : (
                   "Pay & Start Exam"
@@ -364,9 +303,7 @@ const ExamStartPage = () => {
     );
   }
 
-  /* ---------------------------------------------------------------------- */
-  /*  normal render                                                         */
-  /* ---------------------------------------------------------------------- */
+  /* ── NORMAL RENDER (original JSX restored) ----------------------------- */
   return (
     <div className="container max-w-4xl mx-auto px-4 py-12">
       <Card>
@@ -378,10 +315,144 @@ const ExamStartPage = () => {
             Your exam is ready to begin when you are.
           </CardDescription>
         </CardHeader>
+
+        {/* ------- THIS IS THE BLOCK THAT DISAPPEARED: RESTORED ------------- */}
         <CardContent>
-          {/* ------------- details & instructions (unchanged) ------------- */}
-          {/* ... existing JSX kept exactly as in your original file ... */}
+          <div className="space-y-6">
+            <div>
+              <h3 className="font-semibold mb-2">Exam Description</h3>
+              <p className="text-muted-foreground">{exam?.description}</p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="font-semibold mb-2">Exam Details</h3>
+                <ul className="space-y-2">
+                  <li className="flex items-start">
+                    {/* clock icon */}
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 text-primary mr-2 mt-0.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 8v4l3 3" />
+                    </svg>
+                    <span>Time Limit: {exam?.timeLimit} minutes</span>
+                  </li>
+                  <li className="flex items-start">
+                    {/* calendar icon */}
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 text-primary mr-2 mt-0.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <rect
+                        width="18"
+                        height="18"
+                        x="3"
+                        y="4"
+                        rx="2"
+                        ry="2"
+                      />
+                      <line x1="16" x2="16" y1="2" y2="6" />
+                      <line x1="8" x2="8" y1="2" y2="6" />
+                      <line x1="3" x2="21" y1="10" y2="10" />
+                    </svg>
+                    <span>Number of Questions: {exam?.questions.length}</span>
+                  </li>
+                  <li className="flex items-start">
+                    {/* trophy icon */}
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 text-primary mr-2 mt-0.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="4 7 4 4 20 4 20 7" />
+                      <line x1="9" y1="20" x2="15" y2="20" />
+                      <line x1="12" y1="4" x2="12" y2="20" />
+                    </svg>
+                    <span>Passing Score: {exam?.passingScore}%</span>
+                  </li>
+                  {isFreeExam && (
+                    <li className="flex items-start">
+                      {/* check icon */}
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 text-green-500 mr-2 mt-0.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M22 11.08V12A10 10 0 1 1 16.07 2.93" />
+                        <polyline points="22 4 12 14.01 9 11.01" />
+                      </svg>
+                      <span className="font-semibold text-green-600">
+                        Free Exam
+                      </span>
+                    </li>
+                  )}
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="font-semibold mb-2">Exam Instructions</h3>
+                <ul className="space-y-2">
+                  {[
+                    "Once started, the timer cannot be paused",
+                    "Answer all questions to the best of your ability",
+                    "Results will be processed immediately after completion",
+                  ].map((txt) => (
+                    <li key={txt} className="flex items-start">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 text-primary mr-2 mt-0.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+                        <circle cx="12" cy="13" r="3" />
+                      </svg>
+                      <span>{txt}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            <Alert>
+              <AlertTitle>Ready to begin?</AlertTitle>
+              <AlertDescription>
+                Make sure you have a stable internet connection and will not be
+                disturbed for the next {exam?.timeLimit} minutes. Click the
+                button below when you&apos;re ready to start.
+              </AlertDescription>
+            </Alert>
+          </div>
         </CardContent>
+        {/* ----------------------------------------------------------------- */}
         <CardFooter>
           <Button
             onClick={handleStartExam}
@@ -391,7 +462,7 @@ const ExamStartPage = () => {
             {isGeneratingExam || isStartingAttempt ? (
               <>
                 <div className="mr-2 h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Preparing Exam...
+                Preparing Exam…
               </>
             ) : (
               "Start Exam Now"
