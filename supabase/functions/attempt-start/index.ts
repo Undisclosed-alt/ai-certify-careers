@@ -26,7 +26,7 @@ serve(async (req: Request) => {
       .from("attempts")
       .update({
         started_at: new Date().toISOString(),
-        status: "in_progress",
+        status: "started",
       })
       .eq("id", attemptId)
       .eq("user_id", userId)          // RLS safety
