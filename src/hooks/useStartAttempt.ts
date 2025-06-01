@@ -1,8 +1,8 @@
 /* -------------------------------------------------------------------------- */
 /*  src/hooks/useStartAttempt.ts                                              */
 /*                                                                            */
-/*  Calls the edge function `attempt-start` so that all server-side           */
-/*  bookkeeping (RLS-safe update + question set build) happens in one place.  */
+/*  Starts an existing attempt by invoking the `attempt-start` edge function  */
+/*  and maps its raw response into the shape expected by the UI.              */
 /* -------------------------------------------------------------------------- */
 
 import { useMutation } from "@tanstack/react-query";
@@ -11,11 +11,29 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { callEdge } from "@/lib/api";
 
-/* ---------- shape returned by the edge function -------------------------- */
+/* ---------- domain types -------------------------------------------------- */
+export interface Question {
+  id: string;
+  text: string;
+  type: string;
+  category?: string;
+  options?: unknown;
+}
+
+export interface Exam {
+  id: string;
+  jobRoleId: string;
+  title: string;
+  description: string;
+  timeLimit: number;
+  passingScore: number;
+  questions: Question[];
+}
+
 interface AttemptStartResponse {
   attempt:   { id: string; exam_id: string };
-  exam:      unknown;       // replace with <Exam> if you have the type handy
-  questions: unknown[];     // …and <Question[]> likewise
+  exam:      any;          // raw row from DB (will map below)
+  questions: any[];        // raw question rows
 }
 
 export function useStartAttempt() {
@@ -31,19 +49,33 @@ export function useStartAttempt() {
       } = await supabase.auth.getUser();
       if (authErr || !user) throw new Error("User not authenticated");
 
-      /* call the Supabase Edge Function ---------------------------------- */
-      const data = await callEdge<AttemptStartResponse>("attempt-start", {
+      return await callEdge<AttemptStartResponse>("attempt-start", {
         method: "POST",
         body: { attemptId, userId: user.id },
       });
-
-      return data;
     },
 
     /* --------------------------- happy path ----------------------------- */
     onSuccess: ({ attempt, exam, questions }) => {
+      /* map DB rows ➜ front-end shape ----------------------------------- */
+      const parsedExam: Exam = {
+        id:            exam.id,
+        jobRoleId:     exam.job_role_id,
+        title:         exam.title,
+        description:   exam.description ?? "",          // safe fallback
+        timeLimit:     exam.time_limit_minutes,
+        passingScore:  exam.passing_score,
+        questions: (questions ?? []).map((q: any) => ({
+          id:         q.id,
+          text:       q.text,                            // alias provided by edge fn
+          type:       q.type,
+          category:   q.category,
+          options:    q.options,
+        })),
+      };
+
       navigate(`/exam/${attempt.id}`, {
-        state: { exam, attemptId: attempt.id, questions },
+        state: { exam: parsedExam, attemptId: attempt.id },
       });
     },
 
