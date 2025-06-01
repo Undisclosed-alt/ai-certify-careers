@@ -37,13 +37,19 @@ serve(async (req: Request) => {
       throw attemptErr ?? new Error("Attempt not found or not yours");
     }
 
-    /* 2. pull the full exam + questions ---------------------------------- */
+    /* 2. pull the full exam + questions ------------------------------------ */
 const { data: exam, error: examErr } = await supabase
   .from("exams")
   .select(
     `id, job_role_id, title, description,
      time_limit_minutes, passing_score,
-     questions:questions(id, body:text, type, category, options)` // alias here
+     questions:questions(
+       id,
+       text:body,
+       type,
+       category,
+       options
+     )`
   )
   .eq("id", attempt.exam_id)
   .single();
