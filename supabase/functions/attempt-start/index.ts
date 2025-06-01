@@ -38,14 +38,15 @@ serve(async (req: Request) => {
     }
 
     /* 2. pull the full exam + questions ---------------------------------- */
-    const { data: exam, error: examErr } = await supabase
-      .from("exams")
-      .select(
-        `id, title, time_limit_minutes, passing_score,
-         questions:questions(id, text, type, category, options)`
-      )
-      .eq("id", attempt.exam_id)
-      .single();
+const { data: exam, error: examErr } = await supabase
+  .from("exams")
+  .select(
+    `id, job_role_id, title, description,
+     time_limit_minutes, passing_score,
+     questions:questions(*)`        // ← changed line
+  )
+  .eq("id", attempt.exam_id)
+  .single();
 
     if (examErr || !exam) {
       throw examErr ?? new Error("Exam not found");
