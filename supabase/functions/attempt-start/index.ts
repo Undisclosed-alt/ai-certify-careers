@@ -43,7 +43,7 @@ const { data: exam, error: examErr } = await supabase
   .select(
     `id, job_role_id, title, description,
      time_limit_minutes, passing_score,
-     questions:questions(*)`        // ← changed line
+     questions:questions(id, body:text, type, category, options)` // alias here
   )
   .eq("id", attempt.exam_id)
   .single();
