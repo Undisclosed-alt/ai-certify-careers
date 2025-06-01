@@ -1,27 +1,15 @@
-/* -------------------------------------------------------------------------- */
-/*  supabase/functions/attempt-start/index.ts                                 */
-/*                                                                            */
-/*  – Validates payload (`attemptId`, `userId`)                                */
-/*  – Marks the attempt as “started” + timestamps it                          */
-/*  – Fetches the exam + questions, aliasing DB columns so the JSON contract  */
-/*    remains { exam.title, exam.description?, question.text, … }             */
-/*  – Returns { attempt, exam, questions }                                    */
-/* -------------------------------------------------------------------------- */
-
+// supabase/functions/attempt-start/index.ts
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { supabase } from "../_shared/config.ts";
 
-/* ---------- CORS ---------------------------------------------------------- */
 const corsHeaders = {
-  "Access-Control-Allow-Origin":  "*",
+  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST,OPTIONS",
 };
 
-/* ---------- Edge Function ------------------------------------------------- */
 serve(async (req: Request) => {
-  /* ----- pre-flight ------------------------------------------------------ */
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -30,9 +18,7 @@ serve(async (req: Request) => {
     const { attemptId, userId } = await req.json();
     if (!attemptId || !userId) throw new Error("Missing attemptId or userId");
 
-    /* -------------------------------------------------------------------- */
-    /* 1. flip attempt ➜ started                                            */
-    /* -------------------------------------------------------------------- */
+    /* 1 ── flag attempt as started -------------------------------------- */
     const { data: attempt, error: attemptErr } = await supabase
       .from("attempts")
       .update({
@@ -40,7 +26,7 @@ serve(async (req: Request) => {
         status:     "started",
       })
       .eq("id", attemptId)
-      .eq("user_id", userId)           // RLS: only owner may update
+      .eq("user_id", userId)
       .select("id, exam_id")
       .single();
 
@@ -48,24 +34,24 @@ serve(async (req: Request) => {
       throw attemptErr ?? new Error("Attempt not found or not yours");
     }
 
-    /* -------------------------------------------------------------------- */
-    /* 2. fetch exam + questions (aliasing DB columns)                      */
-    /* -------------------------------------------------------------------- */
+    /* 2 ── fetch exam + questions (aliasing DB columns) ----------------- */
     const { data: exam, error: examErr } = await supabase
       .from("exams")
       .select(
-        `id,
-         job_role_id,
-         title:version,                -- DB column “version” ➜ JSON “title”
-         time_limit_minutes,
-         passing_score,
-         questions:questions(
-           id,
-           text:body,                  -- DB column “body”   ➜ JSON “text”
-           type,
-           category,
-           options
-         )`
+        `
+        id,
+        job_role_id,
+        title:version,
+        time_limit_minutes,
+        passing_score,
+        questions:questions(
+          id,
+          text:body,
+          type,
+          category,
+          options
+        )
+        `
       )
       .eq("id", attempt.exam_id)
       .single();
@@ -74,9 +60,7 @@ serve(async (req: Request) => {
       throw examErr ?? new Error("Exam not found");
     }
 
-    /* -------------------------------------------------------------------- */
-    /* 3. respond OK                                                        */
-    /* -------------------------------------------------------------------- */
+    /* 3 ── respond ------------------------------------------------------- */
     return new Response(
       JSON.stringify({ attempt, exam, questions: exam.questions }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
