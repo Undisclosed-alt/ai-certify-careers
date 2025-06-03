@@ -31,7 +31,7 @@ const HomePage = () => {
           <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
             Why Choose Career.AI?
           </h2>
-          <div className="grid md:grid-cols-5 gap-8">
+          <div className="grid md:grid-cols-5 gap-7">
             <Card className="border-none shadow-md">
               <CardContent className="pt-6">
                 <div className="rounded-full w-12 h-12 flex items-center justify-center bg-brand-100 text-brand-600 mb-4">
