@@ -1,3 +1,4 @@
+
 /* -------------------------------------------------------------------------- */
 /*  src/hooks/useStartAttempt.ts                                              */
 /*                                                                            */
@@ -22,7 +23,7 @@ export interface Question {
 
 export interface Exam {
   id: string;
-  jobRoleId: string;
+  certificationId: string; // TODO: Rename from jobRoleId in future migration
   title: string;
   description: string;
   timeLimit: number;
@@ -60,7 +61,7 @@ export function useStartAttempt() {
       /* map DB rows ➜ front-end shape ----------------------------------- */
       const parsedExam: Exam = {
         id:            exam.id,
-        jobRoleId:     exam.job_role_id,
+        certificationId: exam.job_role_id, // TODO: Rename from job_role_id in future migration
         title:         exam.title,
         description:   exam.description ?? "",          // safe fallback
         timeLimit:     exam.time_limit_minutes,
