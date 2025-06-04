@@ -41,7 +41,7 @@ export function useStartAttempt() {
   const navigate  = useNavigate();
   const { toast } = useToast();
 
-  return useMutation({
+  const mutation = useMutation({
     /* --------------------------- core mutation --------------------------- */
     mutationFn: async (attemptId: string): Promise<AttemptStartResponse> => {
       const {
@@ -90,4 +90,9 @@ export function useStartAttempt() {
       });
     },
   });
+
+  return {
+    ...mutation,
+    isLoading: mutation.isPending, // Add the isLoading property for backward compatibility
+  };
 }

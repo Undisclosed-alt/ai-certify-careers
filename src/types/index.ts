@@ -1,4 +1,3 @@
-
 import { Tables } from '@/integrations/supabase/types';
 
 export interface User {
@@ -18,6 +17,9 @@ export interface Certification {
   price_cents?: number; // Add this property for direct database value access
   imageUrl: string;
 }
+
+// Keep JobRole as an alias for backward compatibility during transition
+export type JobRole = Certification;
 
 export interface Question {
   id: string;
@@ -43,6 +45,7 @@ export interface ExamResult {
   userId: string;
   examId: string;
   certificationId: string; // TODO: Rename from jobRoleId in future migration
+  jobRoleId: string; // Keep for backward compatibility
   score: number;
   passed: boolean;
   ranking: 'top' | 'mid' | 'low' | null;
@@ -106,6 +109,7 @@ export const mapExamResultFromDb = (attempt: Tables<'attempts'>): ExamResult => 
   userId: attempt.user_id,
   examId: attempt.exam_id,
   certificationId: '', // This would typically be derived from the exam
+  jobRoleId: '', // Keep for backward compatibility
   score: (attempt.score_json as any)?.score || 0,
   passed: attempt.status === 'passed',
   ranking: attempt.rank as 'top' | 'mid' | 'low' | null,
