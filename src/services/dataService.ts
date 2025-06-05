@@ -1,8 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
-import { JobRole, Exam, Question, ExamAttempt, ExamResult, mapJobRoleFromDb, mapExamFromDb, mapQuestionFromDb, mapExamAttemptFromDb, mapExamResultFromDb } from '@/types';
+import { Certification, Exam, Question, ExamAttempt, ExamResult, mapJobRoleFromDb, mapExamFromDb, mapQuestionFromDb, mapExamAttemptFromDb, mapExamResultFromDb } from '@/types';
 
-// Mock data for job roles
-const jobRoles: JobRole[] = [
+// Mock data for certifications
+const jobRoles: Certification[] = [
   {
     id: 'role-1',
     title: 'Junior Frontend Developer',
@@ -41,27 +41,27 @@ const jobRoles: JobRole[] = [
 let examAttempts: ExamAttempt[] = [];
 let examResults: ExamResult[] = [];
 
-// Get all job roles
-export const getJobRoles = async (): Promise<JobRole[]> => {
+// Get all certifications
+export const getCertifications = async (): Promise<Certification[]> => {
   try {
     const { data: jobRoles, error } = await supabase
       .from('job_roles')
       .select('*');
 
     if (error) {
-      console.error('Error fetching job roles:', error);
+      console.error('Error fetching certifications:', error);
       throw error;
     }
 
     return jobRoles.map(mapJobRoleFromDb);
   } catch (error) {
-    console.error('Failed to fetch job roles:', error);
+    console.error('Failed to fetch certifications:', error);
     throw error;
   }
 };
 
-// Get a specific job role by id
-export const getJobRoleById = async (id: string): Promise<JobRole | null> => {
+// Get a specific certification by id
+export const getJobRoleById = async (id: string): Promise<Certification | null> => {
   try {
     const { data: jobRole, error } = await supabase
       .from('job_roles')
@@ -73,25 +73,25 @@ export const getJobRoleById = async (id: string): Promise<JobRole | null> => {
       if (error.code === 'PGRST116') { // Record not found
         return null;
       }
-      console.error('Error fetching job role:', error);
+      console.error('Error fetching certification:', error);
       throw error;
     }
 
     return mapJobRoleFromDb(jobRole);
   } catch (error) {
-    console.error('Failed to fetch job role:', error);
+    console.error('Failed to fetch certification:', error);
     throw error;
   }
 };
 
-// Get exam for a job role
-export const getExamForJobRole = async (jobRoleId: string): Promise<Exam | null> => {
+// Get exam for a certification
+export const getExamForJobRole = async (certificationId: string): Promise<Exam | null> => {
   try {
     // Get the exam
     const { data: exam, error: examError } = await supabase
       .from('exams')
       .select('*')
-      .eq('job_role_id', jobRoleId)
+      .eq('job_role_id', certificationId)
       .single();
 
     if (examError) {
@@ -164,8 +164,8 @@ export const getExamResultById = async (attemptId: string): Promise<ExamResult |
     }
 
     const result = mapExamResultFromDb(attempt);
-    // Set the jobRoleId from the joined exam data
-    result.jobRoleId = (attempt.exams as any).job_role_id;
+    // Set the certificationId from the joined exam data
+    result.certificationId = (attempt.exams as any).job_role_id;
     
     return result;
   } catch (error) {
@@ -189,8 +189,8 @@ export const getUserExamAttempts = async (userId: string): Promise<ExamAttempt[]
 
     return attempts.map(attempt => {
       const mappedAttempt = mapExamAttemptFromDb(attempt);
-      // Set the jobRoleId from the joined exam data
-      mappedAttempt.jobRoleId = (attempt.exams as any).job_role_id;
+      // Set the certificationId from the joined exam data
+      mappedAttempt.certificationId = (attempt.exams as any).job_role_id;
       return mappedAttempt;
     });
   } catch (error) {
@@ -230,7 +230,7 @@ export const startExamAttempt = async (userId: string, examId: string): Promise<
     }
 
     const mappedAttempt = mapExamAttemptFromDb(attempt);
-    mappedAttempt.jobRoleId = exam.job_role_id;
+    mappedAttempt.certificationId = exam.job_role_id;
     
     return mappedAttempt;
   } catch (error) {
@@ -268,7 +268,7 @@ export const submitExamAnswers = async (
     }
 
     const result = mapExamResultFromDb(attempt);
-    result.jobRoleId = (attempt.exams as any).job_role_id;
+    result.certificationId = (attempt.exams as any).job_role_id;
     
     return result;
   } catch (error) {
@@ -297,10 +297,10 @@ export const getCertificateByAttemptId = async (attemptId: string): Promise<stri
   }
 };
 
-// Dynamically generate exam questions for a job role
-export const generateExamForJobRole = async (jobRoleId: string): Promise<Exam> => {
-  const role = await getJobRoleById(jobRoleId);
-  if (!role) throw new Error('Job role not found');
+// Dynamically generate exam questions for a certification
+export const generateExamForJobRole = async (certificationId: string): Promise<Exam> => {
+  const role = await getJobRoleById(certificationId);
+  if (!role) throw new Error('Certification role not found');
   
   // In a real app, this would call OpenAI to generate questions
   // For now, we'll use predefined questions based on role
@@ -310,7 +310,7 @@ export const generateExamForJobRole = async (jobRoleId: string): Promise<Exam> =
   // Generic questions for all roles
   questions.push(
     {
-      id: `q-${jobRoleId}-1`,
+      id: `q-${certificationId}-1`,
       text: 'What is the primary goal of responsive web design?',
       options: [
         'To make websites load faster on mobile devices',
@@ -322,7 +322,7 @@ export const generateExamForJobRole = async (jobRoleId: string): Promise<Exam> =
       category: 'Web Development'
     },
     {
-      id: `q-${jobRoleId}-2`,
+      id: `q-${certificationId}-2`,
       text: 'Which of the following is NOT a JavaScript framework or library?',
       options: [
         'Angular',
@@ -339,14 +339,14 @@ export const generateExamForJobRole = async (jobRoleId: string): Promise<Exam> =
   if (role.title.includes('Frontend')) {
     questions.push(
       {
-        id: `q-${jobRoleId}-3`,
+        id: `q-${certificationId}-3`,
         text: 'Explain how CSS flexbox helps with layout design and when you would use it.',
         options: [],
         type: 'openEnded',
         category: 'CSS'
       },
       {
-        id: `q-${jobRoleId}-4`,
+        id: `q-${certificationId}-4`,
         text: 'What is the difference between == and === in JavaScript?',
         options: [
           'They are identical in behavior',
@@ -361,7 +361,7 @@ export const generateExamForJobRole = async (jobRoleId: string): Promise<Exam> =
   } else if (role.title.includes('Full Stack')) {
     questions.push(
       {
-        id: `q-${jobRoleId}-3`,
+        id: `q-${certificationId}-3`,
         text: 'What is the purpose of an ORM (Object-Relational Mapping)?',
         options: [
           'To display data in a graphical form',
@@ -373,7 +373,7 @@ export const generateExamForJobRole = async (jobRoleId: string): Promise<Exam> =
         category: 'Backend'
       },
       {
-        id: `q-${jobRoleId}-4`,
+        id: `q-${certificationId}-4`,
         text: 'Create a function that fetches data from an API and handles errors appropriately.',
         options: [],
         type: 'coding',
@@ -383,7 +383,7 @@ export const generateExamForJobRole = async (jobRoleId: string): Promise<Exam> =
   } else if (role.title.includes('DevOps')) {
     questions.push(
       {
-        id: `q-${jobRoleId}-3`,
+        id: `q-${certificationId}-3`,
         text: 'What is the benefit of using infrastructure as code (IaC)?',
         options: [
           'It makes deploying infrastructure changes faster and more reliable',
@@ -395,7 +395,7 @@ export const generateExamForJobRole = async (jobRoleId: string): Promise<Exam> =
         category: 'Infrastructure'
       },
       {
-        id: `q-${jobRoleId}-4`,
+        id: `q-${certificationId}-4`,
         text: 'Describe your approach to implementing a CI/CD pipeline for a microservices architecture.',
         options: [],
         type: 'openEnded',
@@ -405,7 +405,7 @@ export const generateExamForJobRole = async (jobRoleId: string): Promise<Exam> =
   } else if (role.title.includes('Data Scientist')) {
     questions.push(
       {
-        id: `q-${jobRoleId}-3`,
+        id: `q-${certificationId}-3`,
         text: 'Which of the following is NOT a common method for handling missing data?',
         options: [
           'Imputation with mean or median values',
@@ -417,7 +417,7 @@ export const generateExamForJobRole = async (jobRoleId: string): Promise<Exam> =
         category: 'Data Preprocessing'
       },
       {
-        id: `q-${jobRoleId}-4`,
+        id: `q-${certificationId}-4`,
         text: 'Explain the difference between supervised and unsupervised learning, including examples of algorithms for each.',
         options: [],
         type: 'openEnded',
@@ -429,7 +429,7 @@ export const generateExamForJobRole = async (jobRoleId: string): Promise<Exam> =
   // More generic questions for all roles
   questions.push(
     {
-      id: `q-${jobRoleId}-5`,
+      id: `q-${certificationId}-5`,
       text: 'What is version control and why is it important in software development?',
       options: [
         'A system that records changes to files over time, allowing teams to collaborate and track history',
@@ -441,7 +441,7 @@ export const generateExamForJobRole = async (jobRoleId: string): Promise<Exam> =
       category: 'Development Practices'
     },
     {
-      id: `q-${jobRoleId}-6`,
+      id: `q-${certificationId}-6`,
       text: 'Explain your approach to debugging a complex technical issue.',
       options: [],
       type: 'openEnded',
@@ -450,8 +450,8 @@ export const generateExamForJobRole = async (jobRoleId: string): Promise<Exam> =
   );
   
   return {
-    id: `exam-${jobRoleId}`,
-    jobRoleId,
+    id: `exam-${certificationId}`,
+    certificationId,
     title: `${role.title} Certification Exam`,
     description: `Comprehensive assessment for ${role.title} position. The exam evaluates technical knowledge, problem-solving abilities, and best practices relevant to the role.`,
     timeLimit: 60, // 60 minutes
@@ -497,8 +497,8 @@ export const evaluateExam = async (attemptId: string): Promise<ExamResult> => {
   const attempt = examAttempts.find(a => a.id === attemptId);
   if (!attempt) throw new Error('Exam attempt not found');
   
-  const exam = await generateExamForJobRole(attempt.jobRoleId);
-  const role = await getJobRoleById(attempt.jobRoleId);
+  const exam = await generateExamForJobRole(attempt.certificationId);
+  const role = await getJobRoleById(attempt.certificationId);
   
   // In a real app, this would use OpenAI to evaluate open-ended questions
   // For simplicity, we'll score based on completion and randomness
@@ -539,7 +539,7 @@ export const evaluateExam = async (attemptId: string): Promise<ExamResult> => {
     id: `result-${Date.now()}`,
     userId: attempt.userId,
     examId: attempt.examId,
-    jobRoleId: attempt.jobRoleId,
+    certificationId: attempt.certificationId,
     score: finalScore,
     passed,
     ranking,

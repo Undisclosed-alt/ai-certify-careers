@@ -22,7 +22,7 @@ export interface Question {
 
 export interface Exam {
   id: string;
-  jobRoleId: string;
+  certificationId: string;
   title: string;
   description: string;
   timeLimit: number;
@@ -60,7 +60,7 @@ export function useStartAttempt() {
       /* map DB rows ➜ front-end shape ----------------------------------- */
       const parsedExam: Exam = {
         id:            exam.id,
-        jobRoleId:     exam.job_role_id,
+        certificationId:     exam.job_role_id,
         title:         exam.title,
         description:   exam.description ?? "",          // safe fallback
         timeLimit:     exam.time_limit_minutes,

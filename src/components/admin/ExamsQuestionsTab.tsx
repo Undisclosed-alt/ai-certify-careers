@@ -48,7 +48,7 @@ import { Json } from '@/integrations/supabase/types';
 import { Question } from '@/types';
 
 // Types
-interface JobRole {
+interface Certification {
   id: string;
   title: string;
 }
@@ -83,7 +83,7 @@ interface ExtendedQuestion extends Question {
 
 // Form schemas
 const examSchema = z.object({
-  job_role_id: z.string().min(1, "Job role is required"),
+  job_role_id: z.string().min(1, "Certification role is required"),
   time_limit_minutes: z.coerce.number().int().positive("Time limit must be a positive number"),
   passing_score: z.coerce.number().int().min(0).max(100, "Passing score must be between 0 and 100"),
 });
@@ -120,7 +120,7 @@ const convertDbQuestionToAppQuestion = (dbQuestion: DbQuestion): ExtendedQuestio
 
 const ExamsQuestionsTab = () => {
   // State
-  const [jobRoles, setJobRoles] = useState<JobRole[]>([]);
+  const [jobRoles, setJobRoles] = useState<Certification[]>([]);
   const [selectedJobRoleId, setSelectedJobRoleId] = useState<string | null>(null);
   const [exams, setExams] = useState<Exam[]>([]);
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
@@ -154,7 +154,7 @@ const ExamsQuestionsTab = () => {
     },
   });
 
-  // Fetch job roles
+  // Fetch certifications
   useEffect(() => {
     const fetchJobRoles = async () => {
       try {
@@ -166,15 +166,15 @@ const ExamsQuestionsTab = () => {
         if (error) throw error;
         setJobRoles(data || []);
         
-        // Select the first job role by default if available
+        // Select the first certification by default if available
         if (data && data.length > 0 && !selectedJobRoleId) {
           setSelectedJobRoleId(data[0].id);
         }
       } catch (error: any) {
-        console.error('Error fetching job roles:', error);
+        console.error('Error fetching certifications:', error);
         toast({
           title: 'Error',
-          description: 'Failed to fetch job roles',
+          description: 'Failed to fetch certifications',
           variant: 'destructive',
         });
       } finally {
@@ -185,7 +185,7 @@ const ExamsQuestionsTab = () => {
     fetchJobRoles();
   }, []);
 
-  // Fetch exams when job role changes
+  // Fetch exams when certification changes
   useEffect(() => {
     if (!selectedJobRoleId) return;
     
@@ -465,7 +465,7 @@ const ExamsQuestionsTab = () => {
   };
 
   if (isLoadingJobRoles) {
-    return <div className="flex justify-center p-8">Loading job roles...</div>;
+    return <div className="flex justify-center p-8">Loading certifications...</div>;
   }
 
   return (
@@ -477,10 +477,10 @@ const ExamsQuestionsTab = () => {
         <CardContent>
           <div className="flex flex-col gap-4">
             <div>
-              <FormLabel>Select Job Role</FormLabel>
+              <FormLabel>Select Certification</FormLabel>
               <Select value={selectedJobRoleId || ''} onValueChange={setSelectedJobRoleId}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a job role" />
+                  <SelectValue placeholder="Select a certification" />
                 </SelectTrigger>
                 <SelectContent>
                   {jobRoles.map((role) => (
@@ -507,7 +507,7 @@ const ExamsQuestionsTab = () => {
             {isLoadingExams ? (
               <div className="text-center py-4">Loading exams...</div>
             ) : exams.length === 0 ? (
-              <div className="text-center py-4">No exams available for this job role.</div>
+              <div className="text-center py-4">No exams available for this certification.</div>
             ) : (
               <div className="flex flex-wrap gap-4">
                 {exams.map((exam) => (

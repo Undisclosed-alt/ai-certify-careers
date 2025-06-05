@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
-import { ExamResult, JobRole } from '@/types';
+import { ExamResult, Certification } from '@/types';
 import { getExamResultById, getJobRoleById } from '@/services/dataService';
 import { useToast } from '@/hooks/use-toast';
 
@@ -12,7 +12,7 @@ const CertificatePage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [result, setResult] = useState<ExamResult | null>(null);
-  const [jobRole, setJobRole] = useState<JobRole | null>(null);
+  const [jobRole, setJobRole] = useState<Certification | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   
@@ -47,8 +47,8 @@ const CertificatePage = () => {
         
         setResult(examResult);
         
-        // Get job role details
-        const role = await getJobRoleById(examResult.jobRoleId);
+        // Get certification details
+        const role = await getJobRoleById(examResult.certificationId);
         setJobRole(role || null);
         
       } catch (error) {

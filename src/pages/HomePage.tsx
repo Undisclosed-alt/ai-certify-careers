@@ -9,13 +9,13 @@ const HomePage = () => {
       <section className="bg-gradient-to-b from-background to-muted/20 py-20 md:py-32">
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-4xl md:text-6xl font-bold mb-6">
-            Get <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-teal-500">AI-Certified</span> for Your Dream Job
+            Get <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-teal-500">AI-Certified</span> for Your Dream Certification
           </h1>
           <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto mb-10">
             Professional skills assessment and certification powered by AI. Stand out to employers with validated expertise.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/jobs">
+            <Link to="/certifications">
               <Button size="lg">View Certifications</Button>
             </Link>
             <Link to="/about">
@@ -125,7 +125,7 @@ const HomePage = () => {
           <p className="text-xl md:text-2xl mb-10 max-w-3xl mx-auto opacity-90">
             Get certified today and unlock new professional opportunities.
           </p>
-          <Link to="/jobs">
+          <Link to="/certifications">
             <Button size="lg" variant="secondary" className="font-semibold">
               Get Started Now
             </Button>

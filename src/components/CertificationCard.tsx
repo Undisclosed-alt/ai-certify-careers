@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -11,13 +10,13 @@ import {
 import { Certification } from "@/types";
 import { useBuyCertification } from "@/hooks/useBuyCertification";
 
-interface CertificationCardProps {
-  certification: Certification;
+interface JobRoleCardProps {
+  jobRole: Certification;
 }
 
-export const CertificationCard: React.FC<CertificationCardProps> = ({ certification }) => {
+export const CertificationCard: React.FC<JobRoleCardProps> = ({ jobRole }) => {
   const navigate = useNavigate();
-  const buyCertification = useBuyCertification();
+  const buyExam = useBuyCertification();
 
   /* -----------------------------------------------------------
    *  Card click -> open detail page
@@ -26,7 +25,7 @@ export const CertificationCard: React.FC<CertificationCardProps> = ({ certificat
   const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     if (target.closest("button")) return; // Button was clicked -> ignore
-    if (!buyCertification.isPending) navigate(`/certifications/${certification.id}`);
+    if (!buyExam.isPending) navigate(`/certifications/${jobRole.id}`);
   };
 
   /* -----------------------------------------------------------
@@ -35,10 +34,10 @@ export const CertificationCard: React.FC<CertificationCardProps> = ({ certificat
   const handleButtonClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation(); // prevent card onClick
-    buyCertification.mutate(certification.id);
+    buyExam.mutate(jobRole.id);
   };
 
-  const isFree = certification.price_cents === 0;
+  const isFree = jobRole.price_cents === 0;
 
   return (
     <Card
@@ -48,8 +47,8 @@ export const CertificationCard: React.FC<CertificationCardProps> = ({ certificat
       {/* thumbnail */}
       <div className="aspect-video w-full overflow-hidden">
         <img
-          src={certification.imageUrl}
-          alt={certification.title}
+          src={jobRole.imageUrl}
+          alt={jobRole.title}
           className="w-full h-full object-cover transition-transform hover:scale-105"
         />
       </div>
@@ -57,21 +56,21 @@ export const CertificationCard: React.FC<CertificationCardProps> = ({ certificat
       {/* header */}
       <CardHeader>
         <div className="flex items-center justify-between">
-          <h3 className="text-xl font-bold">{certification.title}</h3>
+          <h3 className="text-xl font-bold">{jobRole.title}</h3>
           <span className="text-sm bg-brand-100 text-brand-700 py-1 px-2 rounded-full">
-            {certification.level}
+            {jobRole.level}
           </span>
         </div>
       </CardHeader>
 
       {/* description + price */}
       <CardContent>
-        <p className="text-muted-foreground mb-4">{certification.description}</p>
+        <p className="text-muted-foreground mb-4">{jobRole.description}</p>
         {isFree ? (
           <span className="font-semibold text-lg text-green-600">Free</span>
         ) : (
           <span className="font-semibold text-lg">
-            ${(certification.price_cents / 100).toFixed(2)}
+            ${(jobRole.price_cents / 100).toFixed(2)}
           </span>
         )}
       </CardContent>
@@ -80,10 +79,10 @@ export const CertificationCard: React.FC<CertificationCardProps> = ({ certificat
       <CardFooter>
         <Button
           className="w-full"
-          disabled={buyCertification.isPending}
+          disabled={buyExam.isPending}
           onClick={handleButtonClick}
         >
-          {buyCertification.isPending
+          {buyExam.isPending
             ? "Processing…"
             : isFree
             ? "Start Exam"

@@ -1,10 +1,10 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { JobRole } from '@/types';
+import { Certification } from '@/types';
 
 // Create a checkout session for purchasing an exam
 export const createCheckoutSession = async (
-  jobRole: JobRole, 
+  jobRole: Certification, 
   userId: string,
   successUrl: string,
   cancelUrl: string
@@ -13,7 +13,7 @@ export const createCheckoutSession = async (
     // Call our Stripe edge function
     const { data, error } = await supabase.functions.invoke('stripe-checkout', {
       body: { 
-        jobRoleId: jobRole.id, 
+        certificationId: jobRole.id, 
         userId, 
         successUrl, 
         cancelUrl 

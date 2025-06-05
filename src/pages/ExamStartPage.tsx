@@ -18,7 +18,7 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@/components/ui/alert";
-import { JobRole, Exam } from "@/types";
+import { Certification, Exam } from "@/types";
 import {
   getJobRoleById,
   generateExamForJobRole,
@@ -26,7 +26,7 @@ import {
 } from "@/services/dataService";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { useBuyExam } from "@/hooks/useBuyExam";
+import { useBuyCertification } from "@/hooks/useBuyCertification";
 import { supabase } from "@/integrations/supabase/client";
 import { useStartAttempt } from "@/hooks/useStartAttempt";
 
@@ -39,7 +39,7 @@ const ExamStartPage = () => {
   const { toast } = useToast();
 
   /* ── state ------------------------------------------------------------- */
-  const [jobRole, setJobRole]             = useState<JobRole | null>(null);
+  const [jobRole, setJobRole]             = useState<Certification | null>(null);
   const [exam, setExam]                   = useState<Exam | null>(null);
   const [isLoading, setIsLoading]         = useState(true);
   const [error, setError]                 = useState<string | null>(null);
@@ -48,7 +48,7 @@ const ExamStartPage = () => {
   const [isFreeExam, setIsFreeExam]       = useState(false);
 
   /* ── mutations --------------------------------------------------------- */
-  const buyExamMutation = useBuyExam();
+  const buyExamMutation = useBuyCertification();
   const {
     mutate: startAttempt,
     isLoading: isStartingAttempt,
@@ -90,7 +90,7 @@ const ExamStartPage = () => {
           if (eErr || !examRow) throw new Error("Failed to load exam data");
 
           const role = await getJobRoleById(examRow.job_role_id);
-          if (!role) throw new Error("Job role not found");
+          if (!role) throw new Error("Certification role not found");
 
           setJobRole(role);
           setIsFreeExam(role.price_cents === 0);
@@ -123,7 +123,7 @@ const ExamStartPage = () => {
 
         try {
           const role = await getJobRoleById(roleId);
-          if (!role) throw new Error("Job role not found");
+          if (!role) throw new Error("Certification role not found");
 
           setJobRole(role);
           setIsFreeExam(role.price_cents === 0);
@@ -152,7 +152,7 @@ const ExamStartPage = () => {
       if (roleId) {
         try {
           const role = await getJobRoleById(roleId);
-          if (!role) throw new Error("Job role not found");
+          if (!role) throw new Error("Certification role not found");
 
           setJobRole(role);
           setIsFreeExam(role.price_cents === 0);
@@ -297,7 +297,7 @@ const ExamStartPage = () => {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
         <div className="mt-6 flex justify-center">
-          <Button onClick={() => navigate("/jobs")}>Back to Job Roles</Button>
+          <Button onClick={() => navigate("/certifications")}>Back to Certifications</Button>
         </div>
       </div>
     );

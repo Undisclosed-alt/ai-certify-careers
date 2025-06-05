@@ -33,7 +33,7 @@ const ExamPage = () => {
       setAttemptId(location.state.attemptId);
       setTimeRemaining(location.state.exam.timeLimit * 60); // Convert minutes to seconds
     } else {
-      navigate('/jobs');
+      navigate('/certifications');
     }
   }, [location.state, navigate]);
   

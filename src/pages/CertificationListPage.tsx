@@ -6,15 +6,15 @@ import { getCertifications } from '@/services/dataService';
 import { CertificationCard } from '@/components/CertificationCard';
 
 const CertificationListPage = () => {
-  const [certifications, setCertifications] = useState<Certification[]>([]);
+  const [jobRoles, setJobRoles] = useState<Certification[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchCertifications = async () => {
+    const fetchJobRoles = async () => {
       try {
-        const certs = await getCertifications();
-        setCertifications(certs);
+        const roles = await getCertifications();
+        setJobRoles(roles);
         setIsLoading(false);
       } catch (error) {
         console.error('Failed to fetch certifications:', error);
@@ -22,13 +22,13 @@ const CertificationListPage = () => {
       }
     };
 
-    fetchCertifications();
+    fetchJobRoles();
   }, []);
 
-  const filteredCertifications = certifications.filter(cert =>
-    cert.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cert.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cert.level.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredJobRoles = jobRoles.filter(role =>
+    role.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    role.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    role.level.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -38,12 +38,12 @@ const CertificationListPage = () => {
           Professional Certification Exams
         </h1>
         <p className="text-lg text-muted-foreground mb-8">
-          Select a certification to validate your skills with our AI-powered assessments.
+          Select a certification to get certified and validate your skills with our AI-powered assessments.
         </p>
         <div className="max-w-md mx-auto">
           <Input
             type="text"
-            placeholder="Search by title or level..."
+            placeholder="Search by job title or level..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="mb-2"
@@ -55,10 +55,10 @@ const CertificationListPage = () => {
         <div className="flex justify-center">
           <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
         </div>
-      ) : filteredCertifications.length > 0 ? (
+      ) : filteredJobRoles.length > 0 ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCertifications.map((cert) => (
-            <CertificationCard key={cert.id} certification={cert} />
+          {filteredJobRoles.map((role) => (
+            <CertificationCard key={role.id} jobRole={role} />
           ))}
         </div>
       ) : (

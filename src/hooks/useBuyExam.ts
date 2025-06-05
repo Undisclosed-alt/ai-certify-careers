@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/*  src/hooks/useBuyExam.ts                                                   */
+/*  src/hooks/useBuyCertification.ts                                                   */
 /* -------------------------------------------------------------------------- */
 
 import { useMutation } from "@tanstack/react-query";
@@ -18,17 +18,17 @@ interface StripeCheckout {
 }
 /* ------------------------------------------------------------------------ */
 
-export function useBuyExam() {
+export function useBuyCertification() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (jobRoleId: string) => {
+    mutationFn: async (certificationId: string) => {
       /* 1 ── fetch price --------------------------------------------------- */
       const { data: jobRole, error: priceErr } = await supabase
         .from("job_roles")
         .select("price_cents")
-        .eq("id", jobRoleId)
+        .eq("id", certificationId)
         .single();
 
       if (priceErr || !jobRole) {
@@ -48,12 +48,12 @@ export function useBuyExam() {
       if (Number(jobRole.price_cents) === 0) {
         const data = await callEdge<AttemptCreateResponse>("attempt-create", {
           method: "POST",
-          body: { jobRoleId, userId: user.id },
+          body: { certificationId, userId: user.id },
         });
 
         /* ⚠️  Route via exam-start, NOT directly to the exam page */
         navigate(
-          `/exam/start?attempt_id=${data.attempt.id}&role=${jobRoleId}`,
+          `/exam/start?attempt_id=${data.attempt.id}&role=${certificationId}`,
         );
 
         toast({
@@ -68,7 +68,7 @@ export function useBuyExam() {
         "stripe-checkout",
         {
           method: "POST",
-          body: { jobRoleId, userId: user.id },
+          body: { certificationId, userId: user.id },
         },
       );
 

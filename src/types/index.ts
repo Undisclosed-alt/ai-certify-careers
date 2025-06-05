@@ -7,7 +7,7 @@ export interface User {
   agreedToTerms: boolean;
 }
 
-export interface JobRole {
+export interface Certification {
   id: string;
   title: string;
   description: string;
@@ -28,7 +28,7 @@ export interface Question {
 
 export interface Exam {
   id: string;
-  jobRoleId: string;
+  certificationId: string;
   title: string;
   description: string;
   timeLimit: number; // in minutes
@@ -40,7 +40,7 @@ export interface ExamResult {
   id: string;
   userId: string;
   examId: string;
-  jobRoleId: string;
+  certificationId: string;
   score: number;
   passed: boolean;
   ranking: 'top' | 'mid' | 'low' | null;
@@ -52,14 +52,14 @@ export interface ExamAttempt {
   id: string;
   userId: string;
   examId: string;
-  jobRoleId: string;
+  certificationId: string;
   startedAt: string;
   completedAt: string | null;
   answers: Record<string, string | number>;
 }
 
 // Type mappings between our app types and Supabase database types
-export const mapJobRoleFromDb = (jobRole: Tables<'job_roles'>): JobRole => ({
+export const mapJobRoleFromDb = (jobRole: Tables<'job_roles'>): Certification => ({
   id: jobRole.id,
   title: jobRole.title,
   description: jobRole.description,
@@ -80,9 +80,9 @@ export const mapQuestionFromDb = (question: Tables<'questions'>): Question => ({
 
 export const mapExamFromDb = (exam: Tables<'exams'>, questions: Question[] = []): Exam => ({
   id: exam.id,
-  jobRoleId: exam.job_role_id,
-  title: '', // This would typically come from the job role
-  description: '', // This would typically come from the job role
+  certificationId: exam.job_role_id,
+  title: '', // This would typically come from the certification
+  description: '', // This would typically come from the certification
   timeLimit: exam.time_limit_minutes,
   questions,
   passingScore: exam.passing_score,
@@ -92,7 +92,7 @@ export const mapExamAttemptFromDb = (attempt: Tables<'attempts'>): ExamAttempt =
   id: attempt.id,
   userId: attempt.user_id,
   examId: attempt.exam_id,
-  jobRoleId: '', // This would typically be derived from the exam
+  certificationId: '', // This would typically be derived from the exam
   startedAt: attempt.started_at,
   completedAt: attempt.completed_at || null,
   answers: (attempt.answers_json as any) || {},
@@ -102,7 +102,7 @@ export const mapExamResultFromDb = (attempt: Tables<'attempts'>): ExamResult => 
   id: attempt.id,
   userId: attempt.user_id,
   examId: attempt.exam_id,
-  jobRoleId: '', // This would typically be derived from the exam
+  certificationId: '', // This would typically be derived from the exam
   score: (attempt.score_json as any)?.score || 0,
   passed: attempt.status === 'passed',
   ranking: attempt.rank as 'top' | 'mid' | 'low' | null,

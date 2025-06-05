@@ -38,12 +38,12 @@ const AboutPage = () => {
                 </div>
                 <CardTitle>Select a Role</CardTitle>
                 <CardDescription>
-                  Choose from our range of industry-specific job roles
+                  Choose from our range of industry-specific certifications
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 <p className="text-muted-foreground">
-                  Browse our catalog of professional certifications designed around specific job roles and skill sets that employers value.
+                  Browse our catalog of professional certifications designed around specific certifications and skill sets that employers value.
                 </p>
               </CardContent>
             </Card>
@@ -178,7 +178,7 @@ const AboutPage = () => {
             Join thousands of professionals who have advanced their careers with Career.AI certifications.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Link to="/jobs">
+            <Link to="/certifications">
               <Button size="lg">View Certifications</Button>
             </Link>
             <Link to="/signup">

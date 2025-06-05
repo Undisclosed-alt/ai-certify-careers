@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Certification } from "@/types";
-import { getCertificationById } from "@/services/dataService";
+import { getJobRoleById } from "@/services/dataService";
 import { useToast } from "@/hooks/use-toast";
 import { useBuyCertification } from "@/hooks/useBuyCertification";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,17 +14,17 @@ const CertificationDetailPage: React.FC = () => {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  const [certification, setCertification] = useState<Certification | null>(null);
+  const [jobRole, setJobRole] = useState<Certification | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const buyCertification = useBuyCertification();
+  const buyExam = useBuyCertification();
 
   useEffect(() => {
     const fetch = async () => {
       if (!id) return;
       try {
-        const cert = await getCertificationById(id);
-        setCertification(cert ?? null);
+        const role = await getJobRoleById(id);
+        setJobRole(role ?? null);
       } catch (err) {
         toast({
           title: "Error",
@@ -47,7 +47,7 @@ const CertificationDetailPage: React.FC = () => {
       navigate("/login", { state: { from: `/certifications/${id}` } });
       return;
     }
-    if (certification) buyCertification.mutate(certification.id);
+    if (jobRole) buyExam.mutate(jobRole.id);
   };
 
   if (isLoading) {
@@ -58,23 +58,23 @@ const CertificationDetailPage: React.FC = () => {
     );
   }
 
-  if (!certification) {
+  if (!jobRole) {
     return (
       <div className="container mx-auto py-12">
         <Alert variant="destructive">
-          <AlertTitle>Certification not found</AlertTitle>
+          <AlertTitle>Certification role not found</AlertTitle>
           <AlertDescription>
-            The certification you're looking for doesn't exist.
+            The role you're looking for doesn't exist.
           </AlertDescription>
         </Alert>
         <Button className="mt-6" onClick={() => navigate("/certifications")}>
-          Back to certifications
+          Back to roles
         </Button>
       </div>
     );
   }
 
-  const isFree = certification.price_cents === 0;
+  const isFree = jobRole.price_cents === 0;
 
   return (
     <div className="container mx-auto py-12 max-w-4xl">
@@ -82,17 +82,19 @@ const CertificationDetailPage: React.FC = () => {
         &larr; Back
       </Button>
 
-      <h1 className="text-3xl font-bold mb-2">{certification.title}</h1>
-      <p className="text-muted-foreground mb-6">{certification.description}</p>
+      <h1 className="text-3xl font-bold mb-2">{jobRole.title}</h1>
+      <p className="text-muted-foreground mb-6">{jobRole.description}</p>
 
       <div className="bg-muted/50 p-4 rounded-lg flex justify-between items-center mb-8">
         <p className="text-xl font-semibold">
-          {isFree ? "Free" : `$${(certification.price_cents / 100).toFixed(2)}`}
+          {isFree ? "Free" : `$${(jobRole.price_cents / 100).toFixed(2)}`}
         </p>
-        <Button size="lg" onClick={handleClick} disabled={buyCertification.isPending}>
-          {buyCertification.isPending ? "Processing…" : isFree ? "Start Exam" : "Take Exam"}
+        <Button size="lg" onClick={handleClick} disabled={buyExam.isPending}>
+          {buyExam.isPending ? "Processing…" : isFree ? "Start Exam" : "Take Exam"}
         </Button>
       </div>
+
+      {/* …you can keep the rest of your long description / cards unchanged */}
     </div>
   );
 };

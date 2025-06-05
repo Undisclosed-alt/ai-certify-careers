@@ -37,8 +37,7 @@ import { Badge } from '@/components/ui/badge';
 import { useQueryClient } from '@tanstack/react-query';
 
 // Define the schema for certifications
-// TODO: Update database schema from job_roles to certifications in future migration
-const certificationSchema = z.object({
+const jobRoleSchema = z.object({
   title: z.string().min(1, "Title is required"),
   slug: z.string().min(1, "Slug is required").regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens"),
   description: z.string().min(1, "Description is required"),
@@ -47,9 +46,9 @@ const certificationSchema = z.object({
   image_url: z.string().optional(),
 });
 
-type CertificationFormValues = z.infer<typeof certificationSchema>;
+type JobRoleFormValues = z.infer<typeof jobRoleSchema>;
 
-interface CertificationRole {
+interface Certification {
   id: string;
   title: string;
   slug: string;
@@ -61,16 +60,16 @@ interface CertificationRole {
 }
 
 const CertificationsTab = () => {
-  const [certifications, setCertifications] = useState<CertificationRole[]>([]);
+  const [jobRoles, setJobRoles] = useState<Certification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [currentCertification, setCurrentCertification] = useState<CertificationRole | null>(null);
+  const [currentJobRole, setCurrentJobRole] = useState<Certification | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const form = useForm<CertificationFormValues>({
-    resolver: zodResolver(certificationSchema),
+  const form = useForm<JobRoleFormValues>({
+    resolver: zodResolver(jobRoleSchema),
     defaultValues: {
       title: '',
       slug: '',
@@ -82,17 +81,16 @@ const CertificationsTab = () => {
   });
   
   // Fetch certifications
-  const fetchCertifications = async () => {
+  const fetchJobRoles = async () => {
     setIsLoading(true);
     try {
-      // TODO: Update table name from job_roles to certifications when database is migrated
       const { data, error } = await supabase
         .from('job_roles')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setCertifications(data || []);
+      setJobRoles(data || []);
     } catch (error: any) {
       console.error('Error fetching certifications:', error);
       toast({
@@ -106,24 +104,24 @@ const CertificationsTab = () => {
   };
 
   useEffect(() => {
-    fetchCertifications();
+    fetchJobRoles();
   }, []);
 
-  const handleEditCertification = (certification: CertificationRole) => {
-    setCurrentCertification(certification);
+  const handleEditJobRole = (jobRole: Certification) => {
+    setCurrentJobRole(jobRole);
     form.reset({
-      title: certification.title,
-      slug: certification.slug,
-      description: certification.description,
-      price_cents: certification.price_cents,
-      level: certification.level || '',
-      image_url: certification.image_url || '',
+      title: jobRole.title,
+      slug: jobRole.slug,
+      description: jobRole.description,
+      price_cents: jobRole.price_cents,
+      level: jobRole.level || '',
+      image_url: jobRole.image_url || '',
     });
     setIsDialogOpen(true);
   };
 
-  const handleCreateCertification = () => {
-    setCurrentCertification(null);
+  const handleCreateJobRole = () => {
+    setCurrentJobRole(null);
     form.reset({
       title: '',
       slug: '',
@@ -135,9 +133,8 @@ const CertificationsTab = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDeleteCertification = async (certificationId: string) => {
+  const handleDeleteJobRole = async (certificationId: string) => {
     try {
-      // TODO: Update table name from job_roles to certifications when database is migrated
       const { error } = await supabase
         .from('job_roles')
         .delete()
@@ -146,12 +143,12 @@ const CertificationsTab = () => {
       if (error) throw error;
 
       // Update the local state optimistically
-      setCertifications((prev) => prev.filter(cert => cert.id !== certificationId));
+      setJobRoles((prev) => prev.filter(role => role.id !== certificationId));
       
       setDeleteDialogOpen(false);
       toast({
         title: 'Success',
-        description: 'Certification deleted successfully',
+        description: 'Certification role deleted successfully',
       });
     } catch (error: any) {
       console.error('Error deleting certification:', error);
@@ -163,11 +160,10 @@ const CertificationsTab = () => {
     }
   };
 
-  const onSubmit = async (values: CertificationFormValues) => {
+  const onSubmit = async (values: JobRoleFormValues) => {
     try {
-      if (currentCertification) {
+      if (currentJobRole) {
         // Update existing certification
-        // TODO: Update table name from job_roles to certifications when database is migrated
         const { error } = await supabase
           .from('job_roles')
           .update({
@@ -178,31 +174,30 @@ const CertificationsTab = () => {
             level: values.level || null,
             image_url: values.image_url || null
           })
-          .eq('id', currentCertification.id);
+          .eq('id', currentJobRole.id);
 
         if (error) throw error;
 
         // Update local state optimistically
-        setCertifications((prev) => 
-          prev.map(cert => 
-            cert.id === currentCertification.id 
-              ? { ...cert, ...values } 
-              : cert
+        setJobRoles((prev) => 
+          prev.map(role => 
+            role.id === currentJobRole.id 
+              ? { ...role, ...values } 
+              : role
           )
         );
 
         // Invalidate any related queries
-        queryClient.invalidateQueries({ queryKey: ['certifications'] });
+        queryClient.invalidateQueries({ queryKey: ['jobRoles'] });
 
         toast({
           title: 'Success',
-          description: 'Certification updated successfully',
+          description: 'Certification role updated successfully',
         });
         
         setIsDialogOpen(false);
       } else {
         // Create new certification
-        // TODO: Update table name from job_roles to certifications when database is migrated
         const { data, error } = await supabase
           .from('job_roles')
           .insert({
@@ -219,15 +214,15 @@ const CertificationsTab = () => {
 
         // Update local state with the new certification
         if (data && data.length > 0) {
-          setCertifications((prev) => [data[0], ...prev]);
+          setJobRoles((prev) => [data[0], ...prev]);
         }
 
         // Invalidate any related queries
-        queryClient.invalidateQueries({ queryKey: ['certifications'] });
+        queryClient.invalidateQueries({ queryKey: ['jobRoles'] });
 
         toast({
           title: 'Success',
-          description: 'Certification created successfully',
+          description: 'Certification role created successfully',
         });
         
         setIsDialogOpen(false);
@@ -247,9 +242,9 @@ const CertificationsTab = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Certifications</h2>
-        <Button onClick={handleCreateCertification}>
+        <Button onClick={handleCreateJobRole}>
           <PlusIcon className="mr-2 h-4 w-4" />
-          Add Certification
+          Add Role
         </Button>
       </div>
 
@@ -272,34 +267,34 @@ const CertificationsTab = () => {
                     Loading...
                   </TableCell>
                 </TableRow>
-              ) : certifications.length === 0 ? (
+              ) : jobRoles.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-8">
                     No certifications found
                   </TableCell>
                 </TableRow>
               ) : (
-                certifications.map((certification) => (
-                  <TableRow key={certification.id}>
-                    <TableCell className="font-medium">{certification.title}</TableCell>
-                    <TableCell>{certification.slug}</TableCell>
-                    <TableCell>{certification.level || '-'}</TableCell>
+                jobRoles.map((jobRole) => (
+                  <TableRow key={jobRole.id}>
+                    <TableCell className="font-medium">{jobRole.title}</TableCell>
+                    <TableCell>{jobRole.slug}</TableCell>
+                    <TableCell>{jobRole.level || '-'}</TableCell>
                     <TableCell>
-                      {certification.price_cents === 0 ? (
+                      {jobRole.price_cents === 0 ? (
                         <Badge variant="success">Free</Badge>
                       ) : (
-                        `${(certification.price_cents / 100).toFixed(2)} USD`
+                        `${(jobRole.price_cents / 100).toFixed(2)} USD`
                       )}
                     </TableCell>
                     <TableCell className="text-right space-x-2">
-                      <Button variant="outline" size="icon" onClick={() => handleEditCertification(certification)}>
+                      <Button variant="outline" size="icon" onClick={() => handleEditJobRole(jobRole)}>
                         <PencilIcon className="h-4 w-4" />
                       </Button>
                       <Button 
                         variant="outline" 
                         size="icon" 
                         onClick={() => {
-                          setCurrentCertification(certification);
+                          setCurrentJobRole(jobRole);
                           setDeleteDialogOpen(true);
                         }}
                       >
@@ -319,7 +314,7 @@ const CertificationsTab = () => {
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>
-              {currentCertification ? 'Edit Certification' : 'Create New Certification'}
+              {currentJobRole ? 'Edit Certification' : 'Create New Certification'}
             </DialogTitle>
           </DialogHeader>
           <Form {...form}>
@@ -375,7 +370,7 @@ const CertificationsTab = () => {
                       <FormControl>
                         <Input type="number" min="0" {...field} />
                       </FormControl>
-                      <FormDescription>Enter 0 to make this certification free.</FormDescription>
+                      <FormDescription>Enter 0 to make this role free.</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -401,7 +396,7 @@ const CertificationsTab = () => {
                   <FormItem>
                     <FormLabel>Description</FormLabel>
                     <FormControl>
-                      <Input placeholder="Certification description" {...field} />
+                      <Input placeholder="Certification role description" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -425,7 +420,7 @@ const CertificationsTab = () => {
             <DialogTitle>Delete Certification</DialogTitle>
           </DialogHeader>
           <p>
-            Are you sure you want to delete the certification "{currentCertification?.title}"? 
+            Are you sure you want to delete the certification "{currentJobRole?.title}"? 
             This action cannot be undone.
           </p>
           <DialogFooter>
@@ -434,7 +429,7 @@ const CertificationsTab = () => {
             </Button>
             <Button 
               variant="destructive" 
-              onClick={() => currentCertification && handleDeleteCertification(currentCertification.id)}
+              onClick={() => currentJobRole && handleDeleteJobRole(currentJobRole.id)}
             >
               Delete
             </Button>

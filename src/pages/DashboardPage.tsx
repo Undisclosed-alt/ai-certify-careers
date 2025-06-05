@@ -44,7 +44,7 @@ const DashboardPage = () => {
           <h1 className="text-3xl font-bold">Dashboard</h1>
           <p className="text-muted-foreground">Welcome back, {userName}!</p>
         </div>
-        <Link to="/jobs">
+        <Link to="/certifications">
           <Button>Take New Certification</Button>
         </Link>
       </div>
@@ -76,7 +76,7 @@ const DashboardPage = () => {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>{result.jobRoleId} Certification</CardTitle>
+                    <CardTitle>{result.certificationId} Certification</CardTitle>
                     <CardDescription>
                       Completed on {new Date(result.completedAt).toLocaleDateString()}
                     </CardDescription>
@@ -136,7 +136,7 @@ const DashboardPage = () => {
             </CardDescription>
           </CardHeader>
           <CardFooter>
-            <Link to="/jobs">
+            <Link to="/certifications">
               <Button>Browse Certifications</Button>
             </Link>
           </CardFooter>

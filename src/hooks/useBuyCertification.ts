@@ -50,7 +50,7 @@ export function useBuyCertification() {
       if (Number(certification.price_cents) === 0) {
         const data = await callEdge<AttemptCreateResponse>("attempt-create", {
           method: "POST",
-          body: { jobRoleId: certificationId, userId: user.id }, // TODO: Rename jobRoleId param in future
+          body: { certificationId: certificationId, userId: user.id }, // TODO: Rename certificationId param in future
         });
 
         /* ⚠️  Route via exam-start, NOT directly to the exam page */
@@ -70,7 +70,7 @@ export function useBuyCertification() {
         "stripe-checkout",
         {
           method: "POST",
-          body: { jobRoleId: certificationId, userId: user.id }, // TODO: Rename jobRoleId param in future
+          body: { certificationId: certificationId, userId: user.id }, // TODO: Rename certificationId param in future
         },
       );
 

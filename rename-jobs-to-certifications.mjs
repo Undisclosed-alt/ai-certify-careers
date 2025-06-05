@@ -1,6 +1,6 @@
 // rename-jobs-to-certifications.mjs
 import { promises as fs } from 'fs';
-import globby from 'globby';
+import { globby } from 'globby';
 import path from 'path';
 
 const patterns = [

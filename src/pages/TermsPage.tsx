@@ -40,7 +40,7 @@ const TermsPage = () => {
         <div className="mb-8">
           <h2 className="text-xl font-bold mb-4">2. Certification Process and Exams</h2>
           <p className="mb-4">
-            The certifications provided by Career.AI are designed to test and validate professional skills in specific job roles. By taking our exams, you agree to the following:
+            The certifications provided by Career.AI are designed to test and validate professional skills in specific certifications. By taking our exams, you agree to the following:
           </p>
           <ul className="list-disc pl-6 mb-4 space-y-2">
             <li>You will not share exam questions, answers, or content with any third party</li>

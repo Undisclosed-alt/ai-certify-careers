@@ -25,7 +25,7 @@ const NotFoundPage = () => {
           <Link to="/">
             <Button>Return to Home</Button>
           </Link>
-          <Link to="/jobs">
+          <Link to="/certifications">
             <Button variant="outline">Browse Certifications</Button>
           </Link>
         </div>

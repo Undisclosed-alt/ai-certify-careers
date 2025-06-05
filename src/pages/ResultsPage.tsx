@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
-import { ExamResult, JobRole } from '@/types';
+import { ExamResult, Certification } from '@/types';
 import { getExamResultById, getJobRoleById } from '@/services/dataService';
 import { useToast } from '@/hooks/use-toast';
 
@@ -14,7 +14,7 @@ const ResultsPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [result, setResult] = useState<ExamResult | null>(null);
-  const [jobRole, setJobRole] = useState<JobRole | null>(null);
+  const [jobRole, setJobRole] = useState<Certification | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   
@@ -46,8 +46,8 @@ const ResultsPage = () => {
         
         setResult(examResult);
         
-        // Get job role details
-        const role = await getJobRoleById(examResult.jobRoleId);
+        // Get certification details
+        const role = await getJobRoleById(examResult.certificationId);
         setJobRole(role || null);
         
       } catch (error) {
@@ -189,7 +189,7 @@ const ResultsPage = () => {
               <Button 
                 variant="outline" 
                 className="w-full"
-                onClick={() => navigate(`/jobs/${result.jobRoleId}`)}
+                onClick={() => navigate(`/certifications/${result.certificationId}`)}
               >
                 Retake Certification
               </Button>
@@ -266,7 +266,7 @@ const ResultsPage = () => {
             </div>
           </CardContent>
           <CardFooter>
-            <Link to="/jobs" className="w-full">
+            <Link to="/certifications" className="w-full">
               <Button variant="outline" className="w-full">
                 Explore More Certifications
               </Button>
