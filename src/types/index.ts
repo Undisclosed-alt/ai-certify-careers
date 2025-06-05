@@ -7,8 +7,7 @@ export interface User {
   agreedToTerms: boolean;
 }
 
-// TODO: Rename database table from job_roles to certifications in future migration
-export interface Certification {
+export interface JobRole {
   id: string;
   title: string;
   description: string;
@@ -17,9 +16,6 @@ export interface Certification {
   price_cents?: number; // Add this property for direct database value access
   imageUrl: string;
 }
-
-// Keep JobRole as an alias for backward compatibility during transition
-export type JobRole = Certification;
 
 export interface Question {
   id: string;
@@ -32,7 +28,7 @@ export interface Question {
 
 export interface Exam {
   id: string;
-  certificationId: string; // TODO: Rename from jobRoleId in future migration
+  jobRoleId: string;
   title: string;
   description: string;
   timeLimit: number; // in minutes
@@ -44,8 +40,7 @@ export interface ExamResult {
   id: string;
   userId: string;
   examId: string;
-  certificationId: string; // TODO: Rename from jobRoleId in future migration
-  jobRoleId: string; // Keep for backward compatibility
+  jobRoleId: string;
   score: number;
   passed: boolean;
   ranking: 'top' | 'mid' | 'low' | null;
@@ -57,15 +52,14 @@ export interface ExamAttempt {
   id: string;
   userId: string;
   examId: string;
-  certificationId: string; // TODO: Rename from jobRoleId in future migration
+  jobRoleId: string;
   startedAt: string;
   completedAt: string | null;
   answers: Record<string, string | number>;
 }
 
 // Type mappings between our app types and Supabase database types
-// TODO: Update these mappings when database tables are renamed from job_roles to certifications
-export const mapCertificationFromDb = (jobRole: Tables<'job_roles'>): Certification => ({
+export const mapJobRoleFromDb = (jobRole: Tables<'job_roles'>): JobRole => ({
   id: jobRole.id,
   title: jobRole.title,
   description: jobRole.description,
@@ -86,9 +80,9 @@ export const mapQuestionFromDb = (question: Tables<'questions'>): Question => ({
 
 export const mapExamFromDb = (exam: Tables<'exams'>, questions: Question[] = []): Exam => ({
   id: exam.id,
-  certificationId: exam.job_role_id, // TODO: Rename from job_role_id in future migration
-  title: '', // This would typically come from the certification
-  description: '', // This would typically come from the certification
+  jobRoleId: exam.job_role_id,
+  title: '', // This would typically come from the job role
+  description: '', // This would typically come from the job role
   timeLimit: exam.time_limit_minutes,
   questions,
   passingScore: exam.passing_score,
@@ -98,7 +92,7 @@ export const mapExamAttemptFromDb = (attempt: Tables<'attempts'>): ExamAttempt =
   id: attempt.id,
   userId: attempt.user_id,
   examId: attempt.exam_id,
-  certificationId: '', // This would typically be derived from the exam
+  jobRoleId: '', // This would typically be derived from the exam
   startedAt: attempt.started_at,
   completedAt: attempt.completed_at || null,
   answers: (attempt.answers_json as any) || {},
@@ -108,8 +102,7 @@ export const mapExamResultFromDb = (attempt: Tables<'attempts'>): ExamResult => 
   id: attempt.id,
   userId: attempt.user_id,
   examId: attempt.exam_id,
-  certificationId: '', // This would typically be derived from the exam
-  jobRoleId: '', // Keep for backward compatibility
+  jobRoleId: '', // This would typically be derived from the exam
   score: (attempt.score_json as any)?.score || 0,
   passed: attempt.status === 'passed',
   ranking: attempt.rank as 'top' | 'mid' | 'low' | null,

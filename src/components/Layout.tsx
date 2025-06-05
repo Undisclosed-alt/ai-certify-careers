@@ -51,10 +51,10 @@ const Navigation: React.FC = () => {
           </Link>
           <nav className="hidden md:flex gap-6">
             <Link 
-              to="/certifications" 
-              className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/certifications' ? 'text-primary' : 'text-muted-foreground'}`}
+              to="/jobs" 
+              className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/jobs' ? 'text-primary' : 'text-muted-foreground'}`}
             >
-              Certifications
+              Job Roles
             </Link>
             {user && (
               <Link 

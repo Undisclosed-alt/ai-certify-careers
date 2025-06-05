@@ -11,8 +11,8 @@ import RequireAdmin from "@/guards/RequireAdmin";
 
 // Pages
 import HomePage from "@/pages/HomePage";
-import CertificationListPage from "@/pages/CertificationListPage";
-import CertificationDetailPage from "@/pages/CertificationDetailPage";
+import JobListPage from "@/pages/JobListPage";
+import JobDetailPage from "@/pages/JobDetailPage";
 import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
 import DashboardPage from "@/pages/DashboardPage";
@@ -45,8 +45,8 @@ const App = () => (
           <Layout>
             <Routes>
               <Route path="/" element={<HomePage />} />
-              <Route path="/certifications" element={<CertificationListPage />} />
-              <Route path="/certifications/:id" element={<CertificationDetailPage />} />
+              <Route path="/jobs" element={<JobListPage />} />
+              <Route path="/jobs/:id" element={<JobDetailPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
               <Route path="/dashboard" element={

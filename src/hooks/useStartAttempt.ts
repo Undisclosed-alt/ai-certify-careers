@@ -1,4 +1,3 @@
-
 /* -------------------------------------------------------------------------- */
 /*  src/hooks/useStartAttempt.ts                                              */
 /*                                                                            */
@@ -23,7 +22,7 @@ export interface Question {
 
 export interface Exam {
   id: string;
-  certificationId: string; // TODO: Rename from jobRoleId in future migration
+  jobRoleId: string;
   title: string;
   description: string;
   timeLimit: number;
@@ -41,7 +40,7 @@ export function useStartAttempt() {
   const navigate  = useNavigate();
   const { toast } = useToast();
 
-  const mutation = useMutation({
+  return useMutation({
     /* --------------------------- core mutation --------------------------- */
     mutationFn: async (attemptId: string): Promise<AttemptStartResponse> => {
       const {
@@ -61,7 +60,7 @@ export function useStartAttempt() {
       /* map DB rows ➜ front-end shape ----------------------------------- */
       const parsedExam: Exam = {
         id:            exam.id,
-        certificationId: exam.job_role_id, // TODO: Rename from job_role_id in future migration
+        jobRoleId:     exam.job_role_id,
         title:         exam.title,
         description:   exam.description ?? "",          // safe fallback
         timeLimit:     exam.time_limit_minutes,
@@ -90,9 +89,4 @@ export function useStartAttempt() {
       });
     },
   });
-
-  return {
-    ...mutation,
-    isLoading: mutation.isPending, // Add the isLoading property for backward compatibility
-  };
 }
