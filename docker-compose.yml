@@ -16,19 +16,23 @@ services:
     ports:
       - "5432:5432"
 
+  # docker-compose.yml  – backend service
   backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
     environment:
       - DATABASE_URL=${DATABASE_URL}
+      - PYTHONPATH=/code              # <-- add this line
     volumes:
-      - ./backend:/code/backend
+      - ./:/code
     depends_on:
       db:
         condition: service_healthy
     ports:
       - "8000:8000"
+
+
 
   adminer:
     image: adminer:latest

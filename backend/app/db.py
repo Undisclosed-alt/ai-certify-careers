@@ -13,3 +13,5 @@ Base = declarative_base()
 async def get_session() -> AsyncSession:        # FastAPI dependency helper
     async with AsyncSessionLocal() as session:
         yield session
+
+import backend.app.models  # noqa: E402, F401

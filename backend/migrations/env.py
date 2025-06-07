@@ -5,7 +5,9 @@ from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from backend.app.db import Base  # pulls in all models (even though we have none yet)
+from backend.app import db            # 👈  this executes db.py (loads models)
+Base = db.Base                        # 👈  reuse the shared Base
+import backend.app.models.job  # noqa: F401
 
 # ----------------------------------------------------------------------
 # Alembic config
