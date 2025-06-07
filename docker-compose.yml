@@ -1,11 +1,12 @@
 services:
+  # ────────────────────────────────────────────────
   db:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB:       ${POSTGRES_DB:-careers}
+      POSTGRES_USER:     ${POSTGRES_USER:-careers_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-careers_pass}
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
@@ -16,14 +17,15 @@ services:
     ports:
       - "5432:5432"
 
-  # docker-compose.yml  – backend service
+  # ────────────────────────────────────────────────
   backend:
     build:
       context: .
-      dockerfile: Dockerfile.backend
+      dockerfile: backend/Dockerfile.backend        # ← correct relative path
+    command: python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - PYTHONPATH=/code              # <-- add this line
+      - DATABASE_URL=postgres+asyncpg://${POSTGRES_USER:-careers_user}:${POSTGRES_PASSWORD:-careers_pass}@db:5432/${POSTGRES_DB:-careers}
+      - PYTHONPATH=/code
     volumes:
       - ./:/code
     depends_on:
@@ -32,24 +34,27 @@ services:
     ports:
       - "8000:8000"
 
+  # ────────────────────────────────────────────────
   worker:
-    build:
+    build:                         # reuse the same image layers as backend
       context: .
       dockerfile: backend/Dockerfile.backend
     command: python -m backend.app.worker
     environment:
-      DATABASE_URL: postgres+asyncpg://careers_user:careers_pass@db:5432/careers
-      PYTHONPATH: /code
+      - DATABASE_URL=postgres+asyncpg://${POSTGRES_USER:-careers_user}:${POSTGRES_PASSWORD:-careers_pass}@db:5432/${POSTGRES_DB:-careers}
+      - PYTHONPATH=/code
     depends_on:
       db:
         condition: service_healthy
     restart: unless-stopped
 
+  # ────────────────────────────────────────────────
   adminer:
     image: adminer:latest
     restart: unless-stopped
     depends_on:
-      - db
+      db:
+        condition: service_started
     ports:
       - "8080:8080"
 
