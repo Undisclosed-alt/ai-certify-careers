@@ -1,5 +1,7 @@
+version: "3.9"
+
 services:
-  # ────────────────────────────────────────────────
+  # ────────────────────────────────  DB  ────────────────────────────────
   db:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -17,11 +19,11 @@ services:
     ports:
       - "5432:5432"
 
-  # ────────────────────────────────────────────────
+  # ──────────────────────────────  API  ────────────────────────────────
   backend:
     build:
       context: .
-      dockerfile: backend/Dockerfile.backend        # ← correct relative path
+      dockerfile: backend/Dockerfile.backend   # ← FILE **INSIDE** ./backend/
     command: python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
     environment:
       - DATABASE_URL=postgres+asyncpg://${POSTGRES_USER:-careers_user}:${POSTGRES_PASSWORD:-careers_pass}@db:5432/${POSTGRES_DB:-careers}
@@ -34,21 +36,23 @@ services:
     ports:
       - "8000:8000"
 
-  # ────────────────────────────────────────────────
+  # ────────────────────────────  WORKER  ───────────────────────────────
   worker:
-    build:                         # reuse the same image layers as backend
+    build:                                    # reuse same Dockerfile
       context: .
       dockerfile: backend/Dockerfile.backend
     command: python -m backend.app.worker
     environment:
       - DATABASE_URL=postgres+asyncpg://${POSTGRES_USER:-careers_user}:${POSTGRES_PASSWORD:-careers_pass}@db:5432/${POSTGRES_DB:-careers}
       - PYTHONPATH=/code
+    volumes:
+      - ./:/code
     depends_on:
       db:
         condition: service_healthy
     restart: unless-stopped
 
-  # ────────────────────────────────────────────────
+  # ────────────────────────────  ADMINER  ──────────────────────────────
   adminer:
     image: adminer:latest
     restart: unless-stopped
