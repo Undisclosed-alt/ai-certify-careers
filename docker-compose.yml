@@ -1,7 +1,5 @@
-version: "3.9"
-
 services:
-  # ────────────────────────────────  DB  ────────────────────────────────
+  # ─────────────────────────  POSTGRES  ─────────────────────────
   db:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -19,11 +17,11 @@ services:
     ports:
       - "5432:5432"
 
-  # ──────────────────────────────  API  ────────────────────────────────
+  # ───────────────────────────  API  ────────────────────────────
   backend:
     build:
       context: .
-      dockerfile: backend/Dockerfile.backend   # ← FILE **INSIDE** ./backend/
+      dockerfile: Dockerfile.backend        # <— root-level Dockerfile
     command: python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
     environment:
       - DATABASE_URL=postgres+asyncpg://${POSTGRES_USER:-careers_user}:${POSTGRES_PASSWORD:-careers_pass}@db:5432/${POSTGRES_DB:-careers}
@@ -36,11 +34,9 @@ services:
     ports:
       - "8000:8000"
 
-  # ────────────────────────────  WORKER  ───────────────────────────────
+  # ──────────────────────────  WORKER  ──────────────────────────
   worker:
-    build:                                    # reuse same Dockerfile
-      context: .
-      dockerfile: backend/Dockerfile.backend
+    image: ai-certify-careers-backend         # re-use backend image
     command: python -m backend.app.worker
     environment:
       - DATABASE_URL=postgres+asyncpg://${POSTGRES_USER:-careers_user}:${POSTGRES_PASSWORD:-careers_pass}@db:5432/${POSTGRES_DB:-careers}
@@ -52,7 +48,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # ────────────────────────────  ADMINER  ──────────────────────────────
+  # ──────────────────────────  ADMINER  ─────────────────────────
   adminer:
     image: adminer:latest
     restart: unless-stopped
