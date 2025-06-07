@@ -5,8 +5,8 @@ from backend.app.scraper.adapters.acme import AcmeScraper
 
 fake_html = """
 <div class="job-row" data-id="123">
-    <a href="https://example.com/jobs/123"><span class="job-title">QA Engineer</span></a>
-    <span class="job-location">Remote</span>
+  <a href="https://example.com/jobs/123"><span class="job-title">QA Engineer</span></a>
+  <span class="job-location">Remote</span>
 </div>
 """
 
@@ -15,9 +15,11 @@ async def test_acme_fetch(monkeypatch):
     async def _fake_get_html(url: str):
         return HTMLParser(fake_html)
 
-    # IMPORTANT ➜ patch the symbol *inside* the adapter module
+    # patch exactly what the adapter imports
     monkeypatch.setattr(
-        "backend.app.scraper.adapters.acme.get_html", _fake_get_html, raise_=True
+        "backend.app.scraper.adapters.acme.get_html",
+        _fake_get_html,
+        raising=True,          # ← old kw-arg name
     )
 
     jobs = [job async for job in AcmeScraper().fetch()]
