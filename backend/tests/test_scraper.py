@@ -19,7 +19,9 @@ async def test_acme_fetch(monkeypatch):
         return HTMLParser(fake_html)
 
     # patch the network helper
-    monkeypatch.setattr(html_util, "get_html", _fake_get_html)
+    monkeypatch.setattr(
+        html_util, "get_html", _fake_get_html
+    )
 
     scraper = AcmeScraper()
     jobs = [job async for job in scraper.fetch()]
