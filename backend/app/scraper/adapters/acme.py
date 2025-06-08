@@ -3,7 +3,7 @@ from datetime import date
 from backend.app.scraper.base import ScraperAdapter, JobData
 from backend.app.scraper.html import get_html
 
-CAREERS_URL = "https://example.com/careers"
+CAREERS_URL = "https://www.binance.com/en/careers/job-openings?team=All&job="
 
 class AcmeScraper(ScraperAdapter):
     company = "Acme Corp"
