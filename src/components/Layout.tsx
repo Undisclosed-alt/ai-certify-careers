@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -48,45 +49,37 @@ const Navigation: React.FC = () => {
               Career.AI
             </span>
           </Link>
+          <nav className="hidden md:flex gap-6">
+            <Link 
+              to="/certifications" 
+              className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/certifications' ? 'text-primary' : 'text-muted-foreground'}`}
+            >
+              Certifications
+            </Link>
+            {user && (
+              <Link 
+                to="/dashboard" 
+                className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/dashboard' ? 'text-primary' : 'text-muted-foreground'}`}
+              >
+                Dashboard
+              </Link>
+            )}
+            {isAdmin && (
+              <Link 
+                to="/admin" 
+                className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname.startsWith('/admin') ? 'text-primary' : 'text-muted-foreground'}`}
+              >
+                Admin
+              </Link>
+            )}
+            <Link 
+              to="/about" 
+              className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/about' ? 'text-primary' : 'text-muted-foreground'}`}
+            >
+              About
+            </Link>
+          </nav>
         </div>
-        
-        <nav className="hidden md:flex gap-6 items-center justify-center flex-1">
-          <Link 
-            to="/jobs" 
-            className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/jobs' ? 'text-primary' : 'text-muted-foreground'}`}
-          >
-            Jobs
-          </Link>
-          <Link 
-            to="/certifications" 
-            className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/certifications' ? 'text-primary' : 'text-muted-foreground'}`}
-          >
-            Certifications
-          </Link>
-          {user && (
-            <Link 
-              to="/dashboard" 
-              className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/dashboard' ? 'text-primary' : 'text-muted-foreground'}`}
-            >
-              Dashboard
-            </Link>
-          )}
-          {isAdmin && (
-            <Link 
-              to="/admin" 
-              className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname.startsWith('/admin') ? 'text-primary' : 'text-muted-foreground'}`}
-            >
-              Admin
-            </Link>
-          )}
-          <Link 
-            to="/about" 
-            className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/about' ? 'text-primary' : 'text-muted-foreground'}`}
-          >
-            About
-          </Link>
-        </nav>
-        
         <div className="flex items-center gap-4">
           {user ? (
             <div className="flex items-center gap-4">
