@@ -49,18 +49,12 @@ const Navigation: React.FC = () => {
               Career.AI
             </span>
           </Link>
-          <nav className="hidden md:flex gap-6 justify-center flex-1">
+          <nav className="hidden md:flex gap-6">
             <Link 
               to="/certifications" 
               className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/certifications' ? 'text-primary' : 'text-muted-foreground'}`}
             >
               Certifications
-            </Link>
-            <Link 
-              to="/jobs" 
-              className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/jobs' ? 'text-primary' : 'text-muted-foreground'}`}
-            >
-              Jobs
             </Link>
             {user && (
               <Link 

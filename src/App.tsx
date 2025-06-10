@@ -25,7 +25,6 @@ import TermsPage from "@/pages/TermsPage";
 import PrivacyPage from "@/pages/PrivacyPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 import AdminPage from "@/pages/AdminPage";
-import JobsPage from "@/pages/JobsPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -48,7 +47,6 @@ const App = () => (
               <Route path="/" element={<HomePage />} />
               <Route path="/certifications" element={<CertificationListPage />} />
               <Route path="/certifications/:id" element={<CertificationDetailPage />} />
-              <Route path="/jobs" element={<JobsPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
               <Route path="/dashboard" element={
